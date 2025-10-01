@@ -1,10 +1,25 @@
 using Microsoft.EntityFrameworkCore;
 using ReviewService.Data;
+using ReviewService.Repositories;
+using ReviewService.Repositories.Interfaces;
+using ReviewService.Services;
+using ReviewService.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ReviewDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+});
 
 builder.Services.AddHttpClient("authservice", client =>
 {
@@ -21,6 +36,18 @@ builder.Services.AddHttpClient("orderservice", client =>
     client.BaseAddress = new Uri("http://orderservice");
 });
 
+//
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+builder.Services.AddScoped<IReviewService, ReviewServicee>();
+
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddMaps(typeof(Program).Assembly);
+});
+//
 
 
 
@@ -41,6 +68,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
