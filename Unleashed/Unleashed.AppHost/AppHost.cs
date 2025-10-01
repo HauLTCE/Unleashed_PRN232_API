@@ -2,55 +2,55 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 //===========================================================================================================================================
 
-var authService = builder.AddProject<Projects.AuthService>("authservice");
+//var authService = builder.AddProject<Projects.AuthService>("authservice");
 
-var productService = builder.AddProject<Projects.ProductService>("productservice");
+//var productService = builder.AddProject<Projects.ProductService>("productservice");
 
-var inventoryService = builder.AddProject<Projects.InventoryService>("inventoryservice");
+//var inventoryService = builder.AddProject<Projects.InventoryService>("inventoryservice");
 
-var cartService = builder.AddProject<Projects.CartService>("cartservice");
+//var cartService = builder.AddProject<Projects.CartService>("cartservice");
 
-var orderService = builder.AddProject<Projects.OrderService>("orderservice");
+//var orderService = builder.AddProject<Projects.OrderService>("orderservice");
 
-var discountService = builder.AddProject<Projects.DiscountService>("discountservice");
+//var discountService = builder.AddProject<Projects.DiscountService>("discountservice");
 
-var reviewService = builder.AddProject<Projects.ReviewService>("reviewservice");
+//var reviewService = builder.AddProject<Projects.ReviewService>("reviewservice");
 
-var notificationService = builder.AddProject<Projects.NotificationService>("notificationservice");
+//var notificationService = builder.AddProject<Projects.NotificationService>("notificationservice");
 
 //===========================================================================================================================================
 
-//var authService = builder
-//    .AddProject<Projects.AuthService>("authservice")
-//    .WithHttpEndpoint(port: 10001, name: "http-auth");
+var authService = builder
+    .AddProject<Projects.AuthService>("authservice")
+    .WithHttpEndpoint(port: 10001, name: "http-auth");
 
-//var productService = builder
-//    .AddProject<Projects.ProductService>("productservice")
-//    .WithHttpEndpoint(port: 10002, name: "http-product");
+var productService = builder
+    .AddProject<Projects.ProductService>("productservice")
+    .WithHttpEndpoint(port: 10002, name: "http-product");
 
-//var inventoryService = builder
-//    .AddProject<Projects.InventoryService>("inventoryservice")
-//    .WithHttpEndpoint(port: 10003, name: "http-inventory");
+var inventoryService = builder
+    .AddProject<Projects.InventoryService>("inventoryservice")
+    .WithHttpEndpoint(port: 10003, name: "http-inventory");
 
-//var cartService = builder
-//    .AddProject<Projects.CartService>("cartservice")
-//    .WithHttpEndpoint(port: 10004, name: "http-cart");
+var cartService = builder
+    .AddProject<Projects.CartService>("cartservice")
+    .WithHttpEndpoint(port: 10004, name: "http-cart");
 
-//var orderService = builder
-//    .AddProject<Projects.OrderService>("orderservice")
-//    .WithHttpEndpoint(port: 10005, name: "http-order");
+var orderService = builder
+    .AddProject<Projects.OrderService>("orderservice")
+    .WithHttpEndpoint(port: 10005, name: "http-order");
 
-//var discountService = builder
-//    .AddProject<Projects.DiscountService>("discountservice")
-//    .WithHttpEndpoint(port: 10006, name: "http-discount");
+var discountService = builder
+    .AddProject<Projects.DiscountService>("discountservice")
+    .WithHttpEndpoint(port: 10006, name: "http-discount");
 
-//var reviewService = builder
-//    .AddProject<Projects.ReviewService>("reviewservice")
-//    .WithHttpEndpoint(port: 10007, name: "http-review");
+var reviewService = builder
+    .AddProject<Projects.ReviewService>("reviewservice")
+    .WithHttpEndpoint(port: 10007, name: "http-review");
 
-//var notificationService = builder
-//    .AddProject<Projects.NotificationService>("notificationservice")
-//    .WithHttpEndpoint(port: 10008, name: "http-notification");
+var notificationService = builder
+    .AddProject<Projects.NotificationService>("notificationservice")
+    .WithHttpEndpoint(port: 10008, name: "http-notification");
 
 //===========================================================================================================================================
 
