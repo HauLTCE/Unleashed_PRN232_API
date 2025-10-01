@@ -12,5 +12,7 @@
         public string? UserAddress { get; set; }
         public string? UserImage { get; set; }
         public DateTimeOffset? UserCreatedAt { get; set; }
+        public DateTimeOffset? UserUpdatedAt { get; set; }
+        public string? RoleName { get; set; }
     }
 }

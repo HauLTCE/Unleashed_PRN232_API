@@ -13,7 +13,7 @@ namespace AuthService.Repositories
         }
         public IQueryable<User> All()
         {
-            return _authDbContext.Users.AsQueryable();
+            return _authDbContext.Users.Include(u => u.Role).AsQueryable();
         }
 
         public async Task<bool> CreateAsync(User entity)
@@ -45,12 +45,16 @@ namespace AuthService.Repositories
 
         public async Task<User?> FindAsync(Guid id)
         {
-           return await _authDbContext.Users.FirstOrDefaultAsync(u => u.UserId == id);
+            return await _authDbContext.Users
+                          .Include(u => u.Role)
+                          .FirstOrDefaultAsync(u => u.UserId == id);
         }
 
         public async Task<User?> GetByUsername(string username)
         {
-            return await _authDbContext.Users.FirstOrDefaultAsync(u => u.UserUsername.ToLower().Equals(username.ToLower()));
+            return await _authDbContext.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.UserUsername.ToLower().Equals(username.ToLower()));
         }
 
         public async Task<bool> IsAny(Guid id)

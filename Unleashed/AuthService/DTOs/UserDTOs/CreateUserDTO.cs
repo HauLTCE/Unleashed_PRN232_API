@@ -26,4 +26,7 @@ public class CreateUserDTO
     [Required]
     [StringLength(150)]
     public string? UserFullname { get; set; }
+
+    [Required]
+    public required int RoleId { get; set; } = 2;
 }

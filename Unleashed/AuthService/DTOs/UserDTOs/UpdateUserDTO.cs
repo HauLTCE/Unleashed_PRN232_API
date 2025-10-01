@@ -20,5 +20,7 @@ namespace AuthService.DTOs.UserDTOs
         [Url]
         [StringLength(255)]
         public string? UserImage { get; set; }
+        [Required]
+        public required int RoleId { get; set; }
     }
 }

@@ -12,19 +12,18 @@ namespace AuthService.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IRoleRepository _roleRepository;
         private readonly IMapper _mapper;
 
-        public UserService(IMapper mapper, IUserRepository userRepository)
+        public UserService(IMapper mapper, IUserRepository userRepository, IRoleRepository roleRepository)
         {
             _mapper = mapper;
             _userRepository = userRepository;
+            _roleRepository = roleRepository;
         }
 
         public async Task<UserDTO?> CreateUser(CreateUserDTO createUserDTO)
         {
-            // IMPORTANT: You should hash the password here before saving it.
-            // Storing plain-text passwords is a major security risk.
-            // Example: createUserDTO.UserPassword = BCrypt.Net.BCrypt.HashPassword(createUserDTO.UserPassword);
 
             var user = _mapper.Map<User>(createUserDTO);
             user.UserId = Guid.NewGuid();
