@@ -58,10 +58,9 @@ namespace AuthService.Repositories
         {
             try
             {
-                await _authDbContext.SaveChangesAsync();
-                return true;
+                return await _authDbContext.SaveChangesAsync() > 0;
             }
-            catch (Exception)
+            catch
             {
                 return false;
             }
