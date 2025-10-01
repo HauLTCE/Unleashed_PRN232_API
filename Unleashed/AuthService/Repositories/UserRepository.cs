@@ -9,7 +9,7 @@ namespace AuthService.Repositories
     {
         private readonly AuthDbContext _authDbContext;
         public UserRepository(AuthDbContext authDbContext) {
-        _authDbContext = authDbContext;
+            _authDbContext = authDbContext;
         }
         public IQueryable<User> All()
         {
@@ -66,10 +66,9 @@ namespace AuthService.Repositories
         {
             try
             {
-                await _authDbContext.SaveChangesAsync();
-                return true;
+                return await _authDbContext.SaveChangesAsync() > 0;
             }
-            catch (Exception)
+            catch
             {
                 return false;
             }
