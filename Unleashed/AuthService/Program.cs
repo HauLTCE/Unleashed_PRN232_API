@@ -25,9 +25,12 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthenService, AuthenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddMaps(typeof(UserProfile).Assembly);
+    cfg.AddMaps(typeof(RoleProfile).Assembly);
 });
 builder.Services.AddHttpClient("notificationservice", client =>
 {

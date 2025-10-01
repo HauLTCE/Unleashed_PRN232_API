@@ -14,9 +14,11 @@ public class UserProfile : Profile
         //  READ MAPPINGS (Entity -> DTO)
         // ===================================================================
 
-        // This maps the main User entity to the UserDto. AutoMapper is smart
-        // enough to handle the nested Role and UserRank mappings below.
-        CreateMap<User, UserDTO>();
+        CreateMap<User, UserDTO>()
+        .ForMember(
+        dest => dest.RoleName,
+        opt => opt.MapFrom(src => src.Role.RoleName)
+        );
 
         // ===================================================================
         //  WRITE MAPPINGS (DTO -> Entity)
