@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ReviewService.DTOs;
+using ReviewService.DTOs.Review;
 using ReviewService.Services.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;

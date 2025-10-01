@@ -1,6 +1,6 @@
 ﻿using ReviewService.DTOs.Comment;
 
-namespace ReviewService.DTOs
+namespace ReviewService.DTOs.Review
 {
     public class ReviewDto
     {

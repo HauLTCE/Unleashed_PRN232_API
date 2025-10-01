@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using ReviewService.DTOs;
+using ReviewService.DTOs.Review;
 using ReviewService.Models;
 using ReviewService.Repositories.Interfaces;
 using ReviewService.Services.Interfaces;

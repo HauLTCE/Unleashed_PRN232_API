@@ -1,4 +1,4 @@
-﻿using ReviewService.DTOs;
+﻿using ReviewService.DTOs.Review;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

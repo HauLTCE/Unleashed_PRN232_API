@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ReviewService.DTOs
+namespace ReviewService.DTOs.Review
 {
     public class UpdateReviewDto
     {

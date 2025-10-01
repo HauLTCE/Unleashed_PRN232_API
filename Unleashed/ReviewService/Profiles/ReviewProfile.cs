@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using ReviewService.DTOs;
+using ReviewService.DTOs.Review;
 using ReviewService.Models;
 
 namespace ReviewService.Profiles
