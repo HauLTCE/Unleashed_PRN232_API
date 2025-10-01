@@ -1,4 +1,8 @@
 using InventoryService.Data;
+using InventoryService.Repositories;
+using InventoryService.Repositories.Interfaces;
+using InventoryService.Services;
+using InventoryService.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,10 +10,43 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<InventoryDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+});
+
 builder.Services.AddHttpClient("notificationservice", client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
 });
+
+//
+
+builder.Services.AddScoped<IProviderRepository, ProviderRepository>();
+builder.Services.AddScoped<IProviderService, ProviderService>();
+
+builder.Services.AddScoped<IStockRepository, StockRepository>();
+builder.Services.AddScoped<IStockService, StockService>();
+
+builder.Services.AddScoped<IStockVariationRepository, StockVariationRepository>();
+builder.Services.AddScoped<IStockVariationService, StockVariationService>();
+
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
+
+builder.Services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
+builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
+
+//
+
+builder.Services.AddAutoMapper(typeof(Program));
+
 
 
 // Add services to the container.
@@ -29,6 +66,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
