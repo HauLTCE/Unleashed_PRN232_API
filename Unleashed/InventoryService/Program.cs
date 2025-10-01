@@ -43,9 +43,14 @@ builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ITransactionTypeRepository, TransactionTypeRepository>();
 builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
 
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddMaps(typeof(Program).Assembly);
+});
+
 //
 
-builder.Services.AddAutoMapper(typeof(Program));
+
 
 
 
