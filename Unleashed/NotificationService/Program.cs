@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using NotificationService;
 using NotificationService.Data;
 using NotificationService.Profiles;
 using NotificationService.Repositories;
@@ -16,15 +17,19 @@ builder.Services.AddDbContext<NotificationDbContext>(options =>
 
 // --- Dependency Injection ---
 
-// Add AutoMapper, scanning the current assembly for profiles
+// Add AutoMapper, scanning the current assembly for all profiles (like MappingProfile)
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddProfile<NotificationProfile>();
+    cfg.AddProfile<NotificationUserProfile>();
 });
 
 // Add custom services and repositories
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<INotificationService, NotiService>();
+
+builder.Services.AddScoped<INotificationUserRepository, NotificationUserRepository>();
+builder.Services.AddScoped<INotificationUserService, NotiUserService>();
 
 
 // --- API Services ---
@@ -49,3 +54,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+

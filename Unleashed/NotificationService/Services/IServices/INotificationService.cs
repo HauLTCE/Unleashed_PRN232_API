@@ -1,4 +1,4 @@
-﻿using NotificationService.DTOs;
+﻿using NotificationService.DTOs.NotificationDTOs;
 
 namespace NotificationService.Services.IServices
 {
