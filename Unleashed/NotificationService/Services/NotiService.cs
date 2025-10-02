@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using NotificationService.DTOs;
+using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.Models;
 using NotificationService.Repositories.IRepositories;
 using NotificationService.Services.IServices;

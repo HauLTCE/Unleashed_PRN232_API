@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using NotificationService.DTOs;
+using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.Models;
 
 namespace NotificationService.Profiles
