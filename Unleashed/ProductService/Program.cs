@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using ProductService.Data;
+using ProductService.Repositories;
+using ProductService.Repositories.IRepositories;
+using ProductService.Services;
+using ProductService.Services.IServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +21,11 @@ builder.Services.AddCors(options =>
         });
 });
 
+
+
+
+
+
 builder.Services.AddHttpClient("reviewservice", client =>
 {
     client.BaseAddress = new Uri("http://reviewservice");
@@ -32,8 +41,13 @@ builder.Services.AddHttpClient("discountservice", client =>
     client.BaseAddress = new Uri("http://discountservice");
 });
 
+builder.Services.AddScoped<IProductService, ProductServiceImpl>();
 
 
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IVariationRepository, VariationRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 
 
 // Add services to the container.
