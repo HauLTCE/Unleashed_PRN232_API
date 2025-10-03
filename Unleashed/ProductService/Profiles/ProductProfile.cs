@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using ProductService.DTOs.ProductDTOs;
+using ProductService.DTOs.VariationDTOs;
 using ProductService.Models;
 
 namespace ProductService.Profiles
@@ -11,6 +12,9 @@ namespace ProductService.Profiles
             //map DTO -> Model
             CreateMap<CreateProductDTO, Product>();
             CreateMap<UpdateProductDTO, Product>();
+
+            CreateMap<CreateVariationDTO, Variation>();
+            CreateMap<UpdateVariationDTO, Variation>();
 
             //model -> DTO
             CreateMap<Product, ProductDetailDTO>();

@@ -26,6 +26,15 @@ namespace ProductService.Repositories
 
             return await query.ToPagedResultAsync(pagination.PageNumber, pagination.PageSize);
         }
+        public async Task<List<Variation>> GetByProductIdAsync(Guid productId)
+        {
+            return await _context.Variations
+                .Where(v => v.ProductId == productId)
+                .Include(v => v.Size)
+                .Include(v => v.Color)
+                .OrderBy(v => v.VariationId)
+                .ToListAsync();
+        }
 
         public async Task<Variation?> GetByIdAsync(int id)
             => await _context.Variations
