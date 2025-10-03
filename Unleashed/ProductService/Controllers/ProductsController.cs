@@ -39,63 +39,30 @@ namespace ProductService.Controllers
             return product;
         }
 
-        // PUT: api/Products/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutProduct(Guid id, UpdateProductDTO updateProductDto)
+        // PUT: api/Products/{id}
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> PutProduct(Guid id, [FromBody] UpdateProductDTO updateProductDto)
         {
             if (id != updateProductDto.ProductId)
-            {
                 return BadRequest("ID in route doesn't match ID in body");
-            }
 
-            var updatedProduct = await _productService.UpdateProductAsync(id, updateProductDto);
-
-            if (updatedProduct == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(updatedProduct);
-        }
-
-        // PUT: api/Products/5/variations
-        [HttpPut("{id}/variations")]
-        public async Task<ActionResult<ProductDetailDTO>> UpdateProductVariations(Guid id, List<UpdateVariationDTO> updateVariationDtos)
-        {
             try
             {
-                var updatedProduct = await _productService.UpdateProductVariationsAsync(id, updateVariationDtos);
+                var updated = await _productService.UpdateProductAsync(id, updateProductDto);
+                if (updated == null) return NotFound();
 
-                if (updatedProduct == null)
-                {
-                    return NotFound();
-                }
-
-                return Ok(updatedProduct);
+                return Ok(updated);
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch
             {
-                return StatusCode(500, "An error occurred while updating product variations");
+                return StatusCode(500, "An error occurred while updating the product");
             }
         }
 
-        // DELETE: api/Products/variations/5
-        [HttpDelete("variations/{variationId}")]
-        public async Task<IActionResult> DeleteVariation(int variationId)
-        {
-            var result = await _productService.DeleteVariationAsync(variationId);
-
-            if (!result)
-            {
-                return NotFound();
-            }
-
-            return NoContent();
-        }
         // POST: api/Products
         [HttpPost]
         public async Task<ActionResult<ProductDetailDTO>> PostProduct(CreateProductDTO createProductDto)
@@ -120,12 +87,7 @@ namespace ProductService.Controllers
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
             var result = await _productService.DeleteProductAsync(id);
-
-            if (!result)
-            {
-                return NotFound();
-            }
-
+            if (!result) return NotFound();
             return NoContent();
         }
     }
