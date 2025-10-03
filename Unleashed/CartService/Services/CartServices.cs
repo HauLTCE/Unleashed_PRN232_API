@@ -1,113 +1,77 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using AutoMapper;
+﻿using AutoMapper;
 using CartService.Dtos;
 using CartService.Models;
-using CartService.Repositories;
 using CartService.Repositories.Interfaces;
 using CartService.Services.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace CartService.Services
 {
-    public class CartServices : ICartService
+    public class CartService : ICartService
     {
         private readonly ICartRepository _cartRepository;
         private readonly IMapper _mapper;
-
-        public CartServices(ICartRepository cartRepository, IMapper mapper)
+        public CartService(ICartRepository cartRepository, IMapper mapper)
         {
             _cartRepository = cartRepository;
             _mapper = mapper;
         }
-
-        public async Task<ActionResult<IEnumerable<CartDTO>>> GetCarts()
+        public async Task<Cart> CreateOrUpdateCartAsync(CreateCartDTO createCartDTO)
         {
-            var carts = await _cartRepository.GetAllAsync();
-            return new OkObjectResult(_mapper.Map<IEnumerable<CartDTO>>(carts));
+            var existingCart = await _cartRepository.FindAsync((createCartDTO.UserId, createCartDTO.VariationId));
+            if (existingCart != null)
+            {
+                existingCart.CartQuantity += createCartDTO.CartQuantity;
+                _cartRepository.Update(existingCart);
+                await _cartRepository.SaveAsync();
+                return existingCart;
+            }
+            var newCart = _mapper.Map<Cart>(createCartDTO);
+            await _cartRepository.CreateAsync(newCart);
+            await _cartRepository.SaveAsync();
+            return newCart;
         }
 
-        public async Task<ActionResult<CartDTO>> GetCart(Guid userId, int variationId)
+        public async Task<bool> DeleteCartAsync(Guid userId, int variationId)
         {
-            var cart = await _cartRepository.GetByIdAsync(userId, variationId);
-
+            var cart = await _cartRepository.FindAsync((userId, variationId));
             if (cart == null)
             {
-                return new NotFoundResult();
+                return false;
             }
-
-            return new OkObjectResult(_mapper.Map<CartDTO>(cart));
+            _cartRepository.Delete(cart);
+            return await _cartRepository.SaveAsync(); 
         }
 
-        public async Task<IActionResult> PutCart(Guid userId, int variationId, UpdateCartDTO updateCartDTO)
+        public async Task<Cart?> GetCartAsync(Guid userId, int variationId)
         {
-            var cartFromRepo = await _cartRepository.GetByIdAsync(userId, variationId);
-            if (cartFromRepo == null)
-            {
-                return new NotFoundResult();
-            }
-
-            _mapper.Map(updateCartDTO, cartFromRepo);
-            _cartRepository.Update(cartFromRepo);
-
-            try
-            {
-                await _cartRepository.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _cartRepository.CartExistsAsync(userId, variationId))
-                {
-                    return new NotFoundResult();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return new NoContentResult();
+            return await _cartRepository.FindAsync((userId, variationId));
         }
 
-        public async Task<ActionResult<CartDTO>> PostCart(CreateCartDTO createCartDTO)
+        public async Task<IEnumerable<Cart>> GetCartsAsync()
         {
-            var cart = _mapper.Map<Cart>(createCartDTO);
-
-            try
-            {
-                await _cartRepository.AddAsync(cart);
-                await _cartRepository.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                if (await _cartRepository.CartExistsAsync(cart.UserId, cart.VariationId))
-                {
-                    return new ConflictResult();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            var cartDto = _mapper.Map<CartDTO>(cart);
-
-            return new CreatedAtActionResult("GetCart", "Carts", new { userId = cartDto.UserId, variationId = cartDto.VariationId }, cartDto);
+            return await _cartRepository.All().ToListAsync();
         }
 
-        public async Task<IActionResult> DeleteCart(Guid userId, int variationId)
+        public async Task<IEnumerable<Cart>> GetCartsByUserIdAsync(Guid userId)
         {
-            var cart = await _cartRepository.GetByIdAsync(userId, variationId);
+            return await _cartRepository.GetCartsByUserIdAsync(userId);
+        }
+
+        public async Task<Cart?> UpdateCartAsync(Guid userId, int variationId, UpdateCartDTO updateCartDTO)
+        {
+            var cart = await _cartRepository.FindAsync((userId, variationId));
             if (cart == null)
             {
-                return new NotFoundResult();
+                return null;
             }
-
-            _cartRepository.Remove(cart);
-            await _cartRepository.SaveChangesAsync();
-
-            return new NoContentResult();
+            cart.CartQuantity = updateCartDTO.CartQuantity;
+            _cartRepository.Update(cart);
+            await _cartRepository.SaveAsync();
+            return cart;
         }
     }
 }

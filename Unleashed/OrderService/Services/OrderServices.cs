@@ -3,114 +3,173 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Dtos;
 using OrderService.Models;
-using OrderService.Repositories;
+using OrderService.Repositories.Interfaces;
+using OrderService.Services.Interfaces;
 
 namespace OrderService.Services
 {
     public class OrderServices : IOrderService
     {
         private readonly IOrderRepository _orderRepository;
+        private readonly IOrderStatusRepo _orderStatusRepository;
+        private readonly IPaymenMethodRepo _paymentMethodRepository;
+        private readonly IShippingRepo _shippingRepository;
         private readonly IMapper _mapper;
 
-        public OrderServices(IOrderRepository orderRepository, IMapper mapper)
+        public OrderServices(IOrderRepository orderRepository, IMapper mapper, IOrderStatusRepo orderStatusRepository, IPaymenMethodRepo paymentMethodRepository, IShippingRepo _shippingRepo)
         {
             _orderRepository = orderRepository;
             _mapper = mapper;
+            _orderStatusRepository = orderStatusRepository;
+            _paymentMethodRepository = paymentMethodRepository;
+            _shippingRepository = _shippingRepo;
         }
 
-        public async Task<ActionResult<IEnumerable<OrderDto>>> GetOrders()
+        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto)
         {
-            var orders = await _orderRepository.GetAllAsync();
-            return new OkObjectResult(_mapper.Map<IEnumerable<OrderDto>>(orders));
-        }
-
-        public async Task<ActionResult<OrderDto>> GetOrder(string id)
-        {
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null)
+            if (createOrderDto.OrderStatusId.HasValue)
             {
-                return new NotFoundResult();
-            }
-            return new OkObjectResult(_mapper.Map<OrderDto>(order));
-        }
-
-        public async Task<IActionResult> PutOrder(string id, UpdateOrderDto updateOrderDto)
-        {
-            var orderFromRepo = await _orderRepository.GetByIdAsync(id);
-            if (orderFromRepo == null)
-            {
-                return new NotFoundResult();
-            }
-
-            _mapper.Map(updateOrderDto, orderFromRepo);
-            orderFromRepo.OrderUpdatedAt = DateTimeOffset.UtcNow;
-
-            _orderRepository.Update(orderFromRepo);
-
-            try
-            {
-                await _orderRepository.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _orderRepository.OrderExistsAsync(id))
+                var status = await _orderStatusRepository.FindAsync(createOrderDto.OrderStatusId.Value);
+                if (status == null)
                 {
-                    return new NotFoundResult();
-                }
-                else
-                {
-                    throw;
+                    throw new ArgumentException($"Order status with ID {createOrderDto.OrderStatusId.Value} does not exist.");
                 }
             }
-
-            return new NoContentResult();
-        }
-
-        public async Task<ActionResult<OrderDto>> PostOrder(CreateOrderDto createOrderDto)
-        {
+            if (createOrderDto.PaymentMethodId.HasValue)
+            {
+                var paymentMethod = await _paymentMethodRepository.FindAsync(createOrderDto.PaymentMethodId.Value);
+                if (paymentMethod == null)
+                {
+                    throw new ArgumentException($"Payment method with ID {createOrderDto.PaymentMethodId.Value} does not exist.");
+                }
+            }
+            if (createOrderDto.ShippingMethodId.HasValue)
+            {
+                var shippingMethod = await _shippingRepository.FindAsync(createOrderDto.ShippingMethodId.Value);
+                if (shippingMethod == null)
+                {
+                    throw new ArgumentException($"Shipping method with ID {createOrderDto.ShippingMethodId.Value} does not exist.");
+                }
+            }
             var order = _mapper.Map<Order>(createOrderDto);
-
-            // Gán các giá trị mặc định khi tạo mới
-            order.OrderId = "ORD-" + Guid.NewGuid().ToString("N").ToUpper();
-            order.OrderDate = DateTimeOffset.UtcNow;
+            order.OrderId = Guid.NewGuid();
             order.OrderCreatedAt = DateTimeOffset.UtcNow;
             order.OrderUpdatedAt = DateTimeOffset.UtcNow;
-
-            try
+            var created = await _orderRepository.CreateAsync(order);
+            if (!created)
             {
-                await _orderRepository.AddAsync(order);
-                await _orderRepository.SaveChangesAsync();
+                throw new Exception("Failed to create order.");
             }
-            catch (DbUpdateException)
+            var saved = await _orderRepository.SaveAsync();
+            if (!saved)
             {
-                if (await _orderRepository.OrderExistsAsync(order.OrderId))
-                {
-                    return new ConflictResult();
-                }
-                else
-                {
-                    throw;
-                }
+                throw new Exception("Failed to save changes after creating order.");
             }
-
-            var createdOrder = await _orderRepository.GetByIdAsync(order.OrderId);
-            var orderDto = _mapper.Map<OrderDto>(createdOrder);
-
-            return new CreatedAtActionResult("GetOrder", "Orders", new { id = orderDto.OrderId }, orderDto);
+            return _mapper.Map<OrderDto>(order);
         }
 
-        public async Task<IActionResult> DeleteOrder(string id)
+        public async Task<bool> DeleteOrderAsync(Guid orderId)
         {
-            var order = await _orderRepository.GetByIdAsync(id);
+            var order = await _orderRepository.FindAsync(orderId);
             if (order == null)
             {
-                return new NotFoundResult();
+                return false;
             }
+            var deleted = _orderRepository.Delete(order);
+            if (!deleted)
+            {
+                throw new Exception("Failed to delete order.");
+            }
+            var saved = await _orderRepository.SaveAsync();
+            if (!saved)
+            {
+                throw new Exception("Failed to save changes after deleting order.");
+            }
+            return true;
+        }
 
-            _orderRepository.Remove(order);
-            await _orderRepository.SaveChangesAsync();
+        public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync()
+        {
+            var orders = await _orderRepository.All()
+                .Include(o => o.OrderStatus)
+                .Include(o => o.PaymentMethod)
+                .Include(o => o.ShippingMethod)
+                .Include(o => o.OrderVariationSingles)
+                .ToListAsync();
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
 
-            return new NoContentResult();
+        public async Task<OrderDto?> GetOrderByIdAsync(Guid orderId)
+        {
+            var order = await _orderRepository.All()
+                .Include(o => o.OrderStatus)
+                .Include(o => o.PaymentMethod)
+                .Include(o => o.ShippingMethod)
+                .Include(o => o.OrderVariationSingles)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null)
+            {
+                return null;
+            }
+            return _mapper.Map<OrderDto>(order);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetOrdersByCustomerIdAsync(Guid customerId)
+        {
+            var orders = await _orderRepository.GetOrdersByCustomerIdAsync(customerId);
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetOrdersByStatusAsync(int statusId)
+        {
+            var orders = await _orderRepository.GetOrdersByStatusAsync(statusId);
+            return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        }
+
+        public async Task<OrderDto?> UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto)
+        {
+            var order = await _orderRepository.FindAsync(orderId);
+            if (order == null)
+            {
+                return null;
+            }
+            if (updateOrderDto.OrderStatusId.HasValue)
+            {
+                var status = await _orderStatusRepository.FindAsync(updateOrderDto.OrderStatusId.Value);
+                if (status == null)
+                {
+                    throw new ArgumentException($"Order status with ID {updateOrderDto.OrderStatusId.Value} does not exist.");
+                }
+                order.OrderStatusId = updateOrderDto.OrderStatusId;
+            }
+            if (updateOrderDto.InchargeEmployeeId.HasValue)
+            {
+                order.InchargeEmployeeId = updateOrderDto.InchargeEmployeeId;
+            }
+            if (!string.IsNullOrEmpty(updateOrderDto.OrderTrackingNumber))
+            {
+                order.OrderTrackingNumber = updateOrderDto.OrderTrackingNumber;
+            }
+            if (updateOrderDto.OrderExpectedDeliveryDate.HasValue)
+            {
+                order.OrderExpectedDeliveryDate = updateOrderDto.OrderExpectedDeliveryDate;
+            }
+            if (!string.IsNullOrEmpty(updateOrderDto.OrderNote))
+            {
+                order.OrderNote = updateOrderDto.OrderNote;
+            }
+            order.OrderUpdatedAt = DateTimeOffset.UtcNow;
+            var updated = _orderRepository.Update(order);
+            if (!updated)
+            {
+                throw new Exception("Failed to update order.");
+            }
+            var saved = await _orderRepository.SaveAsync();
+            if (!saved)
+            {
+                throw new Exception("Failed to save changes after updating order.");
+            }
+            return _mapper.Map<OrderDto>(order);
         }
     }
 }

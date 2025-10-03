@@ -12,7 +12,7 @@ public partial class Order
     [Key]
     [Column("order_id")]
     [StringLength(255)]
-    public string OrderId { get; set; } = null!;
+    public Guid OrderId { get; set; }
 
     [Column("user_id")]
     public Guid? UserId { get; set; }

@@ -13,7 +13,7 @@ public partial class OrderVariationSingle
     [Key]
     [Column("order_id")]
     [StringLength(255)]
-    public string OrderId { get; set; } = null!;
+    public Guid OrderId { get; set; }
 
     [Key]
     [Column("variation_single_id")]

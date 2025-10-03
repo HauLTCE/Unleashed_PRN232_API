@@ -1,7 +1,11 @@
-﻿namespace CartService.Dtos
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace CartService.Dtos
 {
     public class UpdateCartDTO
     {
-        public int? CartQuantity { get; set; }
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int CartQuantity { get; set; }
     }
 }

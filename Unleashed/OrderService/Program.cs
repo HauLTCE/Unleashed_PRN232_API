@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using OrderService.Data;
 using OrderService.Profiles;
 using OrderService.Repositories;
+using OrderService.Repositories.Interfaces;
 using OrderService.Services;
+using OrderService.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +57,9 @@ builder.Services.AddHttpClient("cartservice", client =>
 
 
 // Add services to the container.
+builder.Services.AddScoped<IOrderStatusRepo, OrderStatusRepo>();
+builder.Services.AddScoped<IPaymenMethodRepo, PaymentMethodRepo>();
+builder.Services.AddScoped<IShippingRepo, ShippingRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderServices>();
 builder.Services.AddControllers();

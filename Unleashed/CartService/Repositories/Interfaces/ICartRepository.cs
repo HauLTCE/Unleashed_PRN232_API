@@ -5,14 +5,8 @@ using CartService.Models;
 
 namespace CartService.Repositories.Interfaces
 {
-    public interface ICartRepository
+    public interface ICartRepository : IGenericRepository<(Guid,int),Cart>
     {
-        Task<IEnumerable<Cart>> GetAllAsync();
-        Task<Cart> GetByIdAsync(Guid userId, int variationId);
-        Task AddAsync(Cart cart);
-        void Update(Cart cart);
-        void Remove(Cart cart);
-        Task<bool> SaveChangesAsync();
-        Task<bool> CartExistsAsync(Guid userId, int variationId);
+        Task<IEnumerable<Cart>> GetCartsByUserIdAsync(Guid userId);
     }
 }

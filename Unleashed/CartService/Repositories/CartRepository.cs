@@ -17,39 +17,83 @@ namespace CartService.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Cart>> GetAllAsync()
+        public IQueryable<Cart> All()
         {
-            return await _context.Carts.ToListAsync();
+            return _context.Carts.AsQueryable();
         }
 
-        public async Task<Cart> GetByIdAsync(Guid userId, int variationId)
+        public async Task<bool> CreateAsync(Cart entity)
         {
-            return await _context.Carts.FindAsync(userId, variationId);
+            try
+            {
+                await _context.Carts.AddAsync(entity);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        public async Task AddAsync(Cart cart)
+        public bool Delete(Cart entity)
         {
-            await _context.Carts.AddAsync(cart);
+            try
+            {
+                _context.Carts.Remove(entity);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        public void Update(Cart cart)
+        public async Task<Cart?> FindAsync((Guid, int) id)
         {
-            _context.Entry(cart).State = EntityState.Modified;
+
+             var (userId, variationId) = id;
+            return await _context.Carts
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.VariationId == variationId);
         }
 
-        public void Remove(Cart cart)
+        public async Task<IEnumerable<Cart>> GetCartsByUserIdAsync(Guid userId)
         {
-            _context.Carts.Remove(cart);
+            return await _context.Carts
+                .Where(c => c.UserId == userId)
+                .ToListAsync();
         }
 
-        public async Task<bool> SaveChangesAsync()
+        public async Task<bool> IsAny((Guid, int) id)
         {
-            return (await _context.SaveChangesAsync() > 0);
+            var (userId, variationId) = id;
+            return await _context.Carts
+                .AnyAsync(c => c.UserId == userId && c.VariationId == variationId);
+
         }
 
-        public async Task<bool> CartExistsAsync(Guid userId, int variationId)
+        public async Task<bool> SaveAsync()
         {
-            return await _context.Carts.AnyAsync(e => e.UserId == userId && e.VariationId == variationId);
+            try
+            {
+                return await _context.SaveChangesAsync() > 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool Update(Cart entity)
+        {
+            try
+            {
+                _context.Carts.Update(entity);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

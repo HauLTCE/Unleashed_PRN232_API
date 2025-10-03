@@ -3,16 +3,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using OrderService.Models;
 
-namespace OrderService.Repositories
+namespace OrderService.Repositories.Interfaces
 {
-    public interface IOrderRepository
+    public interface IOrderRepository : IGenericRepository<Guid, Order>
     {
-        Task<IEnumerable<Order>> GetAllAsync();
-        Task<Order> GetByIdAsync(string id);
-        Task AddAsync(Order order);
-        void Update(Order order);
-        void Remove(Order order);
-        Task<bool> SaveChangesAsync();
-        Task<bool> OrderExistsAsync(string id);
+        Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(Guid customerId);
+        Task<IEnumerable<Order>> GetOrdersByStatusAsync(int statusId);
     }
 }
