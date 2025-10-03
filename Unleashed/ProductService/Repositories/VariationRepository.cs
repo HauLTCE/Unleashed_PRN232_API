@@ -68,5 +68,15 @@ namespace ProductService.Repositories
 
         public async Task<bool> ExistsAsync(int id)
             => await _context.Variations.AnyAsync(v => v.VariationId == id);
+
+        public async Task<bool> DeleteByProductIdAsync(Guid productId)
+        {
+            var list = await _context.Variations.Where(v => v.ProductId == productId).ToListAsync();
+            if (list.Count == 0) return false;
+            _context.Variations.RemoveRange(list);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
     }
 }

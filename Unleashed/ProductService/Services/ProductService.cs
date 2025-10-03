@@ -11,27 +11,36 @@ namespace ProductService.Services
 {
     public class ProductServiceImpl : IProductService
     {
+        private readonly IMapper _mapper;
         private readonly IProductRepository _productRepository;
         private readonly IProductCategoryRepository _productCategoryRepository;
         private readonly IVariationRepository _variationRepository;
         private readonly IBrandRepository _brandRepository;
         private readonly ICategoryRepository _categoryRepository;
-        private readonly IMapper _mapper;
+        private readonly ISizeRepository _sizeRepository;
+        private readonly IColorRepository _colorRepository;
+        private readonly ILogger<ProductServiceImpl> _logger;
 
         public ProductServiceImpl(
-            IProductRepository productRepository,
-            IProductCategoryRepository productCategoryRepository,
-            IVariationRepository variationRepository,
-            IBrandRepository brandRepository,
-            ICategoryRepository categoryRepository,
-            IMapper mapper)
+      IMapper mapper,
+      IProductRepository productRepository,
+      IProductCategoryRepository productCategoryRepository,
+      IVariationRepository variationRepository,
+      IBrandRepository brandRepository,
+      ICategoryRepository categoryRepository,
+      ISizeRepository sizeRepository,
+      IColorRepository colorRepository,
+      ILogger<ProductServiceImpl> logger)
         {
+            _mapper = mapper;
             _productRepository = productRepository;
             _productCategoryRepository = productCategoryRepository;
             _variationRepository = variationRepository;
             _brandRepository = brandRepository;
             _categoryRepository = categoryRepository;
-            _mapper = mapper;
+            _sizeRepository = sizeRepository;
+            _colorRepository = colorRepository;
+            _logger = logger;
         }
 
         public async Task<PagedResult<ProductDetailDTO>> GetPagedProductsAsync(PaginationParams pagination)
@@ -69,115 +78,182 @@ namespace ProductService.Services
             return productDto;
         }
 
-        public async Task<ProductDetailDTO> CreateProductAsync(CreateProductDTO createProductDto)
+        public async Task<ProductDetailDTO> CreateProductAsync(CreateProductDTO dto)
         {
-            // Validation
-            if (createProductDto.BrandId.HasValue && !await _brandRepository.ExistsAsync(createProductDto.BrandId.Value))
+            // 0) Validate giống code cũ
+            if (dto.BrandId.HasValue && !await _brandRepository.ExistsAsync(dto.BrandId.Value))
                 throw new ArgumentException("Brand does not exist");
 
-            // Validate categories
-            if (createProductDto.CategoryIds != null && createProductDto.CategoryIds.Any())
+            if (dto.CategoryIds?.Any() == true)
             {
-                foreach (var categoryId in createProductDto.CategoryIds)
-                {
-                    if (!await _categoryRepository.ExistsAsync(categoryId))
-                        throw new ArgumentException($"Category with ID {categoryId} does not exist");
-                }
+                foreach (var cid in dto.CategoryIds.Distinct())
+                    if (!await _categoryRepository.ExistsAsync(cid))
+                        throw new ArgumentException($"Category with ID {cid} does not exist");
             }
 
-            var product = _mapper.Map<Product>(createProductDto);
+            // 1) Tạo product (giống code cũ)
+            var product = _mapper.Map<Product>(dto);
             product.ProductId = Guid.NewGuid();
             product.ProductCreatedAt = DateTimeOffset.UtcNow;
+            product.ProductUpdatedAt = DateTimeOffset.UtcNow;
 
-            var createdProduct = await _productRepository.CreateAsync(product);
+            await _productRepository.CreateAsync(product);
 
-            // Add categories
-            if (createProductDto.CategoryIds != null && createProductDto.CategoryIds.Any())
+            var productId = product.ProductId;
+            var addedVariationCount = 0;
+            var categoriesAdded = dto.CategoryIds?.Any() == true;
+
+            try
             {
-                await _productCategoryRepository.AddCategoriesToProductAsync(createdProduct.ProductId, createProductDto.CategoryIds);
-            }
-
-            // Add variations
-            if (createProductDto.Variations != null && createProductDto.Variations.Any())
-            {
-                foreach (var variationDto in createProductDto.Variations)
+                // 2) Gán categories qua Raw SQL (Repo)
+                if (dto.CategoryIds?.Any() == true)
                 {
-                    var variation = _mapper.Map<Variation>(variationDto);
-                    variation.ProductId = createdProduct.ProductId;
-                    await _variationRepository.CreateAsync(variation);
-                }
-            }
-
-            return await GetProductByIdAsync(createdProduct.ProductId);
-        }
-
-        public async Task<ProductDetailDTO?> UpdateProductAsync(Guid id, UpdateProductDTO updateProductDto)
-        {
-            var existingProduct = await _productRepository.GetByIdAsync(id);
-            if (existingProduct == null) return null;
-
-            // Update product properties
-            existingProduct.ProductName = updateProductDto.ProductName ?? existingProduct.ProductName;
-            existingProduct.ProductCode = updateProductDto.ProductCode ?? existingProduct.ProductCode;
-            existingProduct.ProductDescription = updateProductDto.ProductDescription ?? existingProduct.ProductDescription;
-            existingProduct.BrandId = updateProductDto.BrandId ?? existingProduct.BrandId;
-            existingProduct.ProductStatusId = updateProductDto.ProductStatusId ?? existingProduct.ProductStatusId;
-            existingProduct.ProductUpdatedAt = DateTimeOffset.UtcNow;
-
-            var updatedProduct = await _productRepository.UpdateAsync(existingProduct);
-
-            // Update categories if provided
-            if (updateProductDto.CategoryIds != null)
-            {
-                // Get current categories
-                var currentCategories = await _productCategoryRepository.GetCategoriesByProductIdAsync(id);
-                var currentCategoryIds = currentCategories.Select(c => c.CategoryId).ToList();
-
-                // Remove all current categories
-                if (currentCategoryIds.Any())
-                {
-                    await _productCategoryRepository.RemoveCategoriesFromProductAsync(id, currentCategoryIds);
+                    await _productCategoryRepository.AddCategoriesToProductAsync(productId, dto.CategoryIds);
                 }
 
-                // Add new categories
-                await _productCategoryRepository.AddCategoriesToProductAsync(id, updateProductDto.CategoryIds);
-            }
-
-            return await GetProductByIdAsync(id);
-        }
-
-        public async Task<ProductDetailDTO?> UpdateProductVariationsAsync(Guid productId, List<UpdateVariationDTO> updateVariationDtos)
-        {
-            var existingProduct = await _productRepository.GetByIdAsync(productId);
-            if (existingProduct == null) return null;
-
-            // Get existing variations for this product
-            var existingVariations = await _variationRepository.GetByProductIdAsync(productId);
-
-            // Update or create variations
-            foreach (var variationDto in updateVariationDtos)
-            {
-                if (variationDto.VariationId > 0) // Sửa từ HasValue sang > 0
+                // 3) Thêm variations — kiểm tra Size/Color như code cũ
+                if (dto.Variations?.Any() == true)
                 {
-                    // Update existing variation
-                    var existingVariation = existingVariations.FirstOrDefault(v => v.VariationId == variationDto.VariationId);
-                    if (existingVariation != null)
+                    foreach (var vdto in dto.Variations)
                     {
-                        _mapper.Map(variationDto, existingVariation);
-                        await _variationRepository.UpdateAsync(existingVariation);
+                        // check tồn tại (giống code cũ)
+                        if (!vdto.SizeId.HasValue || !vdto.ColorId.HasValue) continue;
+
+                        var size = await _sizeRepository.GetByIdAsync(vdto.SizeId.Value);
+                        var color = await _colorRepository.GetByIdAsync(vdto.ColorId.Value);
+                        if (size == null || color == null) continue;
+
+                        var variation = _mapper.Map<Variation>(vdto);
+                        variation.ProductId = productId; // ràng buộc về product vừa tạo
+
+                        await _variationRepository.CreateAsync(variation);
+                        addedVariationCount++;
                     }
                 }
-                else
+
+                // 4) Trả về DTO đầy đủ
+                return await GetProductByIdAsync(productId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CreateProduct failed, running compensation. ProductId={ProductId}", productId);
+
+                // —— BÙ TRỪ (Compensation) —— //
+                try
                 {
-                    // Create new variation
-                    var newVariation = _mapper.Map<Variation>(variationDto);
-                    newVariation.ProductId = productId;
-                    await _variationRepository.CreateAsync(newVariation);
+                    // Xoá variations đã thêm
+                    await _variationRepository.DeleteByProductIdAsync(productId);
+
+                    // Xoá categories liên kết (Raw SQL)
+                    await _productCategoryRepository.RemoveAllByProductAsync(productId);
+
+                    // Xoá product
+                    await _productRepository.DeleteAsync(productId);
                 }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogError(cleanupEx, "Compensation failed. ProductId={ProductId}", productId);
+                }
+
+                throw; // cho controller xử lý trả lỗi 4xx/5xx
+            }
+        }
+
+
+        public async Task<ProductDetailDTO?> UpdateProductAsync(Guid id, UpdateProductDTO dto)
+        {
+            var product = await _productRepository.GetByIdAsync(id);
+            if (product == null) return null;
+
+            // 1) Update thuộc tính sản phẩm
+            product.ProductName = dto.ProductName ?? product.ProductName;
+            product.ProductCode = dto.ProductCode ?? product.ProductCode;
+            product.ProductDescription = dto.ProductDescription ?? product.ProductDescription;
+            product.BrandId = dto.BrandId ?? product.BrandId;
+            product.ProductStatusId = dto.ProductStatusId ?? product.ProductStatusId;
+            product.ProductUpdatedAt = DateTimeOffset.UtcNow;
+
+            await _productRepository.UpdateAsync(product);
+
+            // 2) Update categories (chỉ chạm phần khác biệt)
+            if (dto.CategoryIds != null)
+            {
+                var incoming = dto.CategoryIds.Distinct().ToList();
+                var current = (await _productCategoryRepository.GetCategoriesByProductIdAsync(id))
+                               .Select(c => c.CategoryId).ToList();
+
+                var toRemove = current.Except(incoming).ToList();
+                var toAdd = incoming.Except(current).ToList();
+
+                if (toRemove.Any())
+                    await _productCategoryRepository.RemoveCategoriesFromProductAsync(id, toRemove);
+                if (toAdd.Any())
+                    await _productCategoryRepository.AddCategoriesToProductAsync(id, toAdd);
             }
 
-            // Return updated product
-            return await GetProductByIdAsync(productId);
+            // 3) Upsert + Delete variations (gộp với PUT)
+            if (dto.Variations != null)
+            {
+                var existing = await _variationRepository.GetByProductIdAsync(id);
+                var byId = existing.ToDictionary(v => v.VariationId);
+                var keepIds = new HashSet<int>();
+
+                foreach (var vdto in dto.Variations)
+                {
+                    // Validate Size/Color nếu được gửi lên
+                    if (vdto.SizeId.HasValue)
+                    {
+                        var size = await _sizeRepository.GetByIdAsync(vdto.SizeId.Value);
+                        if (size == null)
+                            throw new ArgumentException($"Invalid SizeId={vdto.SizeId.Value}");
+                    }
+                    if (vdto.ColorId.HasValue)
+                    {
+                        var color = await _colorRepository.GetByIdAsync(vdto.ColorId.Value);
+                        if (color == null)
+                            throw new ArgumentException($"Invalid ColorId={vdto.ColorId.Value}");
+                    }
+
+                    if (vdto.VariationId > 0 && byId.TryGetValue(vdto.VariationId, out var entity))
+                    {
+                        // UPDATE chỉ những field có giá trị (vì DTO nullable)
+                        if (vdto.SizeId.HasValue) entity.SizeId = vdto.SizeId.Value;
+                        if (vdto.ColorId.HasValue) entity.ColorId = vdto.ColorId.Value;
+                        if (vdto.VariationPrice.HasValue) entity.VariationPrice = vdto.VariationPrice.Value;
+                        if (vdto.VariationImage != null) entity.VariationImage = vdto.VariationImage;
+
+                        await _variationRepository.UpdateAsync(entity);
+                        keepIds.Add(entity.VariationId);
+                    }
+                    else
+                    {
+                        // CREATE: yêu cầu đủ SizeId, ColorId, VariationPrice
+                        if (!vdto.SizeId.HasValue || !vdto.ColorId.HasValue || !vdto.VariationPrice.HasValue)
+                            throw new ArgumentException("New variation requires SizeId, ColorId and VariationPrice");
+
+                        var newVar = new Variation
+                        {
+                            ProductId = id,
+                            SizeId = vdto.SizeId.Value,
+                            ColorId = vdto.ColorId.Value,
+                            VariationPrice = vdto.VariationPrice.Value,
+                            VariationImage = vdto.VariationImage
+                        };
+                        var created = await _variationRepository.CreateAsync(newVar);
+                        keepIds.Add(created.VariationId);
+                    }
+                }
+
+                // DELETE: mọi variation còn lại không nằm trong keepIds
+                var toDelete = existing.Where(x => !keepIds.Contains(x.VariationId))
+                                       .Select(x => x.VariationId)
+                                       .ToList();
+                foreach (var vid in toDelete)
+                    await _variationRepository.DeleteAsync(vid);
+            }
+
+            // 4) Trả về DTO đầy đủ
+            return await GetProductByIdAsync(id);
         }
 
         public async Task<bool> DeleteVariationAsync(int variationId)
@@ -187,7 +263,32 @@ namespace ProductService.Services
 
         public async Task<bool> DeleteProductAsync(Guid id)
         {
-            return await _productRepository.DeleteAsync(id);
+            // 0) Check tồn tại
+            var product = await _productRepository.GetByIdAsync(id);
+            if (product == null) return false;
+
+            try
+            {
+                // 1) Xoá variations
+                await _variationRepository.DeleteByProductIdAsync(id);
+
+                // 2) Xoá tất cả liên kết categories (Raw SQL)
+                await _productCategoryRepository.RemoveAllByProductAsync(id);
+
+                // 3) Xoá product
+                var ok = await _productRepository.DeleteAsync(id);
+                return ok;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteProduct failed. ProductId={ProductId}", id);
+                throw; // controller sẽ trả 500
+            }
+        }
+
+        public Task<ProductDetailDTO?> UpdateProductVariationsAsync(Guid productId, List<UpdateVariationDTO> updateVariationDtos)
+        {
+            throw new NotImplementedException();
         }
     }
 }

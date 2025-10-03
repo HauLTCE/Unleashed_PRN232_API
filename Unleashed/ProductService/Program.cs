@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using ProductService.Data;
+using ProductService.Profiles;
 using ProductService.Repositories;
 using ProductService.Repositories.IRepositories;
 using ProductService.Services;
@@ -23,9 +25,6 @@ builder.Services.AddCors(options =>
 
 
 
-
-
-
 builder.Services.AddHttpClient("reviewservice", client =>
 {
     client.BaseAddress = new Uri("http://reviewservice");
@@ -43,11 +42,14 @@ builder.Services.AddHttpClient("discountservice", client =>
 
 builder.Services.AddScoped<IProductService, ProductServiceImpl>();
 
-
+builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IVariationRepository, VariationRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IBrandRepository, BrandRepository>();
+builder.Services.AddScoped<ISizeRepository, SizeRepository>();
+builder.Services.AddScoped<IColorRepository, ColorRepository>();
+
 
 
 // Add services to the container.
@@ -57,6 +59,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddMaps(typeof(ProductProfile).Assembly);
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

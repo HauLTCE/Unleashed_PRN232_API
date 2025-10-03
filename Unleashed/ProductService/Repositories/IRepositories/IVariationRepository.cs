@@ -11,6 +11,7 @@ namespace ProductService.Repositories.IRepositories
         Task<Variation> CreateAsync(Variation variation);
         Task<Variation?> UpdateAsync(Variation variation);
         Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteByProductIdAsync(Guid productId);
         Task<bool> ExistsAsync(int id);
     }
 }
