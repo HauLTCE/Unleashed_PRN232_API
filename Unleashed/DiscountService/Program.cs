@@ -1,10 +1,25 @@
 using DiscountService.Data;
+using DiscountService.Profiles;
+using DiscountService.Repositories;
+using DiscountService.Repositories.Interfaces;
+using DiscountService.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<DiscountDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+});
 
 builder.Services.AddHttpClient("authservice", client =>
 {
@@ -17,9 +32,13 @@ builder.Services.AddHttpClient("notificationservice", client =>
 });
 
 
-
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddMaps(typeof(DiscountProfile).Assembly);
+});
 // Add services to the container.
-
+builder.Services.AddScoped<IDiscountRepository, DiscountRepository>();
+builder.Services.AddScoped<IDiscountService, DiscountService.Services.DiscountService>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -37,6 +56,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+app.UseCors("AllowAll");
 
 app.MapControllers();
 
