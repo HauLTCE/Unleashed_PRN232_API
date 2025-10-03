@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Data;
 using OrderService.Models;
+using OrderService.Repositories.Interfaces;
 
 namespace OrderService.Repositories
 {
@@ -15,49 +16,77 @@ namespace OrderService.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Order>> GetAllAsync()
+        public IQueryable<Order> All()
+        {
+            return _context.Orders.AsQueryable();
+        }
+
+        public async Task<bool> CreateAsync(Order entity)
+        {
+            try 
+            {
+                await _context.Orders.AddAsync(entity);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool Delete(Order entity)
+        {
+            try 
+            {
+                _context.Orders.Remove(entity);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<Order?> FindAsync(Guid id)
+        {
+            return await _context.Orders.FindAsync(id);
+        }
+
+        public async Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(Guid customerId)
         {
             return await _context.Orders
-                .Include(o => o.OrderStatus)
-                .Include(o => o.PaymentMethod)
-                .Include(o => o.ShippingMethod)
-                .Include(o => o.OrderVariationSingles)
+                .Where(o => o.UserId == customerId)
                 .ToListAsync();
         }
 
-        public async Task<Order> GetByIdAsync(string id)
+        public async Task<IEnumerable<Order>> GetOrdersByStatusAsync(int statusId)
         {
             return await _context.Orders
-                .Include(o => o.OrderStatus)
-                .Include(o => o.PaymentMethod)
-                .Include(o => o.ShippingMethod)
-                .Include(o => o.OrderVariationSingles)
-                .FirstOrDefaultAsync(o => o.OrderId == id);
+                .Where(o => o.OrderStatusId == statusId)
+                .ToListAsync();
         }
 
-        public async Task AddAsync(Order order)
-        {
-            await _context.Orders.AddAsync(order);
-        }
-
-        public void Update(Order order)
-        {
-            _context.Entry(order).State = EntityState.Modified;
-        }
-
-        public void Remove(Order order)
-        {
-            _context.Orders.Remove(order);
-        }
-
-        public async Task<bool> SaveChangesAsync()
-        {
-            return (await _context.SaveChangesAsync() > 0);
-        }
-
-        public async Task<bool> OrderExistsAsync(string id)
+        public async Task<bool> IsAny(Guid id)
         {
             return await _context.Orders.AnyAsync(e => e.OrderId == id);
+        }
+
+        public async Task<bool> SaveAsync()
+        {
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public bool Update(Order entity)
+        {
+            try 
+            {
+                _context.Orders.Update(entity);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

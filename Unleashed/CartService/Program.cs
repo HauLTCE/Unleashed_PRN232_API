@@ -41,7 +41,7 @@ builder.Services.AddAutoMapper(cfg =>
 
 // Add services to the container.
 builder.Services.AddScoped<ICartRepository, CartRepository>();
-builder.Services.AddScoped<ICartService, CartServices>();
+builder.Services.AddScoped<ICartService, CartService.Services.CartService>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

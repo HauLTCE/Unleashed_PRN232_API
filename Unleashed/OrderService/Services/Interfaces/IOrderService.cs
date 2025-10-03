@@ -2,14 +2,16 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using OrderService.Dtos;
-namespace OrderService.Services
+namespace OrderService.Services.Interfaces
 {
     public interface IOrderService
     {
-        Task<ActionResult<IEnumerable<OrderDto>>> GetOrders();
-        Task<ActionResult<OrderDto>> GetOrder(string id);
-        Task<IActionResult> PutOrder(string id, UpdateOrderDto updateOrderDto);
-        Task<ActionResult<OrderDto>> PostOrder(CreateOrderDto createOrderDto);
-        Task<IActionResult> DeleteOrder(string id);
+        Task<IEnumerable<OrderDto>> GetAllOrdersAsync();
+        Task<OrderDto?> GetOrderByIdAsync(Guid orderId);
+        Task<IEnumerable<OrderDto>> GetOrdersByCustomerIdAsync(Guid customerId);
+        Task<IEnumerable<OrderDto>> GetOrdersByStatusAsync(int statusId);
+        Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto);
+        Task<OrderDto?> UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto);
+        Task<bool> DeleteOrderAsync(Guid orderId);
     }
 }

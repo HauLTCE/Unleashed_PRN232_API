@@ -1,56 +1,89 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using CartService.Dtos;
+﻿using CartService.Dtos;
+using CartService.Models;
 using CartService.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Threading.Tasks;
 
 namespace CartService.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class CartsController : ControllerBase
+    [Route("api/[controller]")]
+    public class CartController : ControllerBase
     {
         private readonly ICartService _cartService;
 
-        public CartsController(ICartService cartService)
+        public CartController(ICartService cartService)
         {
             _cartService = cartService;
         }
 
-        // GET: api/Carts
+        // GET: api/cart
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CartDTO>>> GetCarts()
+        public async Task<IActionResult> GetCarts()
         {
-            return await _cartService.GetCarts();
+            var carts = await _cartService.GetCartsAsync();
+            return Ok(carts);
         }
 
-        // GET: api/Carts/{userId}/{variationId}
+        // GET: api/cart/user/{userId}
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetCartsByUser(Guid userId)
+        {
+            var carts = await _cartService.GetCartsByUserIdAsync(userId);
+            return Ok(carts);
+        }
+
+        // GET: api/cart/{userId}/{variationId}
         [HttpGet("{userId}/{variationId}")]
-        public async Task<ActionResult<CartDTO>> GetCart(Guid userId, int variationId)
+        public async Task<IActionResult> GetCart(Guid userId, int variationId)
         {
-            return await _cartService.GetCart(userId, variationId);
+            var cart = await _cartService.GetCartAsync(userId, variationId);
+            if (cart == null)
+            {
+                return NotFound();
+            }
+            return Ok(cart);
         }
 
-        // PUT: api/Carts/{userId}/{variationId}
-        [HttpPut("{userId}/{variationId}")]
-        public async Task<IActionResult> PutCart(Guid userId, int variationId, UpdateCartDTO updateCartDTO)
-        {
-            return await _cartService.PutCart(userId, variationId, updateCartDTO);
-        }
-
-        // POST: api/Carts
+        // POST: api/cart
         [HttpPost]
-        public async Task<ActionResult<CartDTO>> PostCart(CreateCartDTO createCartDTO)
+        public async Task<IActionResult> CreateOrUpdateCart([FromBody] CreateCartDTO createCartDTO)
         {
-            return await _cartService.PostCart(createCartDTO);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var cart = await _cartService.CreateOrUpdateCartAsync(createCartDTO);
+            return Ok(cart);
         }
 
-        // DELETE: api/Carts/{userId}/{variationId}
+        // PUT: api/cart/{userId}/{variationId}
+        [HttpPut("{userId}/{variationId}")]
+        public async Task<IActionResult> UpdateCart(Guid userId, int variationId, [FromBody] UpdateCartDTO updateCartDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var updatedCart = await _cartService.UpdateCartAsync(userId, variationId, updateCartDTO);
+            if (updatedCart == null)
+            {
+                return NotFound();
+            }
+            return Ok(updatedCart);
+        }
+
+        // DELETE: api/cart/{userId}/{variationId}
         [HttpDelete("{userId}/{variationId}")]
         public async Task<IActionResult> DeleteCart(Guid userId, int variationId)
         {
-            return await _cartService.DeleteCart(userId, variationId);
+            var deleted = await _cartService.DeleteCartAsync(userId, variationId);
+            if (!deleted)
+            {
+                return NotFound();
+            }
+            return NoContent();
         }
     }
 }
