@@ -22,6 +22,8 @@ namespace ProductService.Profiles
             CreateMap<Category, CategoryDetailDTO>();
             CreateMap<Size, SizeDTO>();
             CreateMap<Color, ColorDTO>();
+            CreateMap<CreateCategoryDTO, Category>();
+            CreateMap<CreateBrandDTO, Brand>();
 
             //model -> DTO
             CreateMap<Product, ProductDetailDTO>();
