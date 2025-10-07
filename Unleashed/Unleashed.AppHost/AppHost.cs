@@ -60,7 +60,9 @@ productService.WithReference(reviewService)
               .WithReference(inventoryService)
               .WithReference(discountService);
 
-inventoryService.WithReference(notificationService);
+inventoryService.WithReference(authService)
+                .WithReference(productService)
+                .WithReference(notificationService);
 
 cartService.WithReference(productService)
            .WithReference(discountService);
