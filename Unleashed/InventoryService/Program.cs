@@ -1,8 +1,11 @@
+using InventoryService.Clients;
+using InventoryService.Clients.Interfaces;
 using InventoryService.Data;
 using InventoryService.Repositories;
 using InventoryService.Repositories.Interfaces;
 using InventoryService.Services;
 using InventoryService.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,10 +24,34 @@ builder.Services.AddCors(options =>
         });
 });
 
+
+builder.Services.AddHttpClient<IAuthServiceClient, AuthServiceClient>(client =>
+{
+    client.BaseAddress = new Uri("http://authservice");
+});
+
+builder.Services.AddHttpClient<IProductCatalogClient, ProductCatalogClient>(client =>
+{
+    client.BaseAddress = new Uri("http://productservice");
+});
+
 builder.Services.AddHttpClient("notificationservice", client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
 });
+
+
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["Jwt:Authority"];
+        options.Audience = builder.Configuration["Jwt:Audience"];
+        options.RequireHttpsMetadata = false;
+    });
+builder.Services.AddAuthorization();
+
+
 
 //
 
@@ -50,10 +77,6 @@ builder.Services.AddAutoMapper(cfg =>
 
 //
 
-
-
-
-
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -75,6 +98,8 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
 app.UseAuthorization();
+
+app.UseAuthentication();
 
 app.MapControllers();
 
