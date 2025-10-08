@@ -19,7 +19,7 @@ public class UserProfile : Profile
         dest => dest.RoleName,
         opt => opt.MapFrom(src => src.Role.RoleName)
         );
-
+        CreateMap<User, ImportServiceUserDTO>();
         // ===================================================================
         //  WRITE MAPPINGS (DTO -> Entity)
         // ===================================================================

@@ -17,9 +17,9 @@ namespace AuthService.DTOs.UserDTOs
         [StringLength(255)]
         public string? UserAddress { get; set; }
 
-        [Url]
         [StringLength(255)]
         public string? UserImage { get; set; }
+        public bool? IsUserEnabled { get; set; } = true;
         [Required]
         public required int RoleId { get; set; }
     }
