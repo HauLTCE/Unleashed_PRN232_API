@@ -5,6 +5,7 @@ using AuthService.DTOs.UserDTOs;
 using AuthService.Repositories.IRepositories;
 using AuthService.Services.IServices;
 using AuthService.Utilities;
+using AuthService.Utilities.IUtilities;
 using Microsoft.AspNetCore.Identity;
 
 namespace AuthService.Services
@@ -13,17 +14,17 @@ namespace AuthService.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IUserService _userService;
-        //private readonly IJwtTokenGenerator _jwtTokenGenerator;
+        private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
         public AuthenService(
             IUserRepository userRepository,
-            IUserService userService
-            //IJwtTokenGenerator jwtTokenGenerator
+            IUserService userService,
+            IJwtTokenGenerator jwtTokenGenerator
             )
         {
             _userRepository = userRepository;
             _userService = userService;
-            //_jwtTokenGenerator = jwtTokenGenerator;
+            _jwtTokenGenerator = jwtTokenGenerator;
         }
 
         public async Task<UserDTO?> RegisterAsync(CreateUserDTO createUserDto)
@@ -35,35 +36,29 @@ namespace AuthService.Services
 
         public async Task<LoginUserResponeDTO?> LoginAsync(LoginUserDTO loginDto)
         {
-            // 1. Find the user by their username or email
-            // (Assuming your repository has a method like this)
-            var user = await _userRepository.GetByUsername(loginDto.Username);
-            if (user == null)
-            {
-                // User not found
-                return null;
+                var user = await _userRepository.GetByUsername(loginDto.Username);
+                if (user == null)
+                {
+                    return null; // User not found
+                }
+
+                if (!user.IsUserEnabled.Value || !HashingPassword.VerifyPassword(loginDto.Password, user.UserPassword))
+                {
+                    return null; // Invalid password or user disabled
+                }
+
+                // 3. Credentials are valid, generate a JWT using the service
+                var token = _jwtTokenGenerator.GenerateToken(user);
+
+                var response = new LoginUserResponeDTO
+                {
+                    UserId = user.UserId,
+                    Token = token // Use the real token
+                };
+
+                return response;
             }
-
-            // 2. Verify the password
-            if (!HashingPassword.VerifyPassword(loginDto.Password, user.UserPassword))
-            {
-                // Invalid password
-                return null;
-            }
-
-            // 3. Credentials are valid, generate a JWT
-            //var token = _jwtTokenGenerator.GenerateToken(user);
-            var token = "No token right now";
-
-            // 4. Create and return the response
-            var response = new LoginUserResponeDTO
-            {
-                UserId = user.UserId,
-                Token = token
-            };
-
-            return response;
         }
     }
-}
+
     

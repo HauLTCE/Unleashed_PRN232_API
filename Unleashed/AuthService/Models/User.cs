@@ -17,7 +17,7 @@ public partial class User
     public int? RoleId { get; set; }
 
     [Column("is_user_enabled")]
-    public bool? IsUserEnabled { get; set; }
+    public bool? IsUserEnabled { get; set; } = true;
 
     [Column("user_google_id")]
     [StringLength(255)]

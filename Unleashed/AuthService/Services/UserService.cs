@@ -104,5 +104,13 @@ namespace AuthService.Services
 
             return false;
         }
+
+        public async Task<ImportServiceUserDTO?> GetByUsernameForImportService(string username)
+        {
+            var user = await _userRepository.GetByUsername(username);
+            // Map the found User entity to a UserDTO.
+            // If user is null, AutoMapper will correctly return null.
+            return _mapper.Map<ImportServiceUserDTO>(user);
+        }
     }
 }

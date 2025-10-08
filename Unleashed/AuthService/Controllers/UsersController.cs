@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using AuthService.Services.IServices;
-using AuthService.DTOs.UserDTOs; // Ensure you have the correct using for your DTOs
+using AuthService.DTOs.UserDTOs;
+using Microsoft.AspNetCore.Http; // Added for StatusCodes
 
 namespace AuthService.Controllers
 {
@@ -13,7 +14,6 @@ namespace AuthService.Controllers
     {
         private readonly IUserService _userService;
 
-        // Inject the service instead of the DbContext
         public UsersController(IUserService userService)
         {
             _userService = userService;
@@ -21,6 +21,7 @@ namespace AuthService.Controllers
 
         // GET: api/Users
         [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<UserDTO>), StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<UserDTO>>> GetUsers()
         {
             var users = await _userService.GetAll();
@@ -29,6 +30,8 @@ namespace AuthService.Controllers
 
         // GET: api/Users/5
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(UserDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserDTO>> GetUser(Guid id)
         {
             var user = await _userService.GetById(id);
@@ -41,12 +44,34 @@ namespace AuthService.Controllers
             return Ok(user);
         }
 
+        // GET: api/Users/ByUsername/me
+        [HttpGet("ByUsername/{username}")]
+        [ProducesResponseType(typeof(ImportServiceUserDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ImportServiceUserDTO>> GetByUsername(string username)
+        {
+            if (string.IsNullOrEmpty(username))
+            {
+                return BadRequest("Username cannot be empty.");
+            }
+
+            var user = await _userService.GetByUsernameForImportService(username);
+
+            if (user == null)
+            {
+                return NotFound($"User with username '{username}' not found.");
+            }
+
+            return Ok(user);
+        }
+
         // POST: api/Users
         [HttpPost]
+        [ProducesResponseType(typeof(UserDTO), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<UserDTO>> PostUser(CreateUserDTO createUserDto)
         {
-            // Note: For this to work best, your IUserService.CreateUser method
-            // should be modified to return the created UserDTO instead of just a boolean.
             var createdUser = await _userService.CreateUser(createUserDto);
 
             if (createdUser == null)
@@ -54,12 +79,13 @@ namespace AuthService.Controllers
                 return BadRequest("Could not create the user. Please check your input.");
             }
 
-            // Return a 201 Created status with a link to the new resource
             return CreatedAtAction(nameof(GetUser), new { id = createdUser.UserId }, createdUser);
         }
 
         // PUT: api/Users/5
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PutUser(Guid id, UpdateUserDTO updateUserDto)
         {
             var success = await _userService.UpdateUser(id, updateUserDto);
@@ -69,11 +95,13 @@ namespace AuthService.Controllers
                 return NotFound($"User with ID {id} not found.");
             }
 
-            return NoContent(); // Standard response for a successful PUT
+            return NoContent();
         }
 
         // DELETE: api/Users/5
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteUser(Guid id)
         {
             var success = await _userService.DeleteUser(id);
@@ -83,7 +111,7 @@ namespace AuthService.Controllers
                 return NotFound($"User with ID {id} not found.");
             }
 
-            return NoContent(); // Standard response for a successful DELETE
+            return NoContent();
         }
     }
 }

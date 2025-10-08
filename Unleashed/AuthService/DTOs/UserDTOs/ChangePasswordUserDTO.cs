@@ -2,7 +2,7 @@
 
 namespace AuthService.DTOs.UserDTOs
 {
-    public class ChangPasswordUserDTO
+    public class ChangePasswordUserDTO
     {
             [Required]
             public string? OldPassword { get; set; }
