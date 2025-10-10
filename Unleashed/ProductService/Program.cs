@@ -43,6 +43,7 @@ builder.Services.AddHttpClient("discountservice", client =>
 builder.Services.AddScoped<IProductService, ProductServiceImpl>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IBrandService, BrandService>();
+builder.Services.AddScoped<IVariationQueryService, VariationService>();
 
 builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
