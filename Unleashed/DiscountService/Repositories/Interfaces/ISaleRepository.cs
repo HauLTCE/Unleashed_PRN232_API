@@ -1,6 +1,8 @@
-﻿namespace DiscountService.Repositories.Interfaces
+﻿using DiscountService.Models;
+
+namespace DiscountService.Repositories.Interfaces
 {
-    public interface ISaleRepository
+    public interface ISaleRepository : IGenericRepository<int, Sale>
     {
     }
 }

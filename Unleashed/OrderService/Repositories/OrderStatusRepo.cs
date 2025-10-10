@@ -10,7 +10,7 @@ namespace OrderService.Repositories
     {
         private readonly OrderDbContext _context;
         public OrderStatusRepo(OrderDbContext context) {
-            context = _context;
+            _context = context;
         }
         public IQueryable<OrderStatus> All()
         {
