@@ -13,5 +13,7 @@ namespace ProductService.Repositories.IRepositories
         Task<bool> DeleteAsync(int id);
         Task<bool> DeleteByProductIdAsync(Guid productId);
         Task<bool> ExistsAsync(int id);
+        Task<List<Variation>> GetByIdsAsync(IEnumerable<int> ids);
+        Task<List<Variation>> SearchAsync(string? search, Guid? productId, int? colorId, int? sizeId);
     }
 }

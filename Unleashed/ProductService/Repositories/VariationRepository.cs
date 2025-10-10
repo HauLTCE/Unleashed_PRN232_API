@@ -77,6 +77,47 @@ namespace ProductService.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
+        public async Task<List<Variation>> GetByIdsAsync(IEnumerable<int> ids)
+        {
+            var idArr = ids?.Distinct().ToArray() ?? Array.Empty<int>();
+            if (idArr.Length == 0) return new List<Variation>();
 
+            return await _context.Variations
+                .Where(v => idArr.Contains(v.VariationId))
+                .Include(v => v.Size)
+                .Include(v => v.Color)
+                .Include(v => v.Product)
+                .OrderBy(v => v.VariationId)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<List<Variation>> SearchAsync(string? search, Guid? productId, int? colorId, int? sizeId)
+        {
+            var q = _context.Variations
+                .Include(v => v.Size)
+                .Include(v => v.Color)
+                .Include(v => v.Product)
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (productId.HasValue) q = q.Where(v => v.ProductId == productId.Value);
+            if (colorId.HasValue) q = q.Where(v => v.ColorId == colorId.Value);
+            if (sizeId.HasValue) q = q.Where(v => v.SizeId == sizeId.Value);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim();
+                q = q.Where(v =>
+                    (v.Product != null && (
+                        v.Product.ProductName.Contains(s) ||
+                        (v.Product.ProductCode ?? string.Empty).Contains(s)))
+                    || (v.Color != null && v.Color.ColorName.Contains(s))
+                    || (v.Size != null && v.Size.SizeName.Contains(s))
+                );
+            }
+
+            return await q.OrderByDescending(v => v.VariationId).ToListAsync();
+        }
     }
 }
