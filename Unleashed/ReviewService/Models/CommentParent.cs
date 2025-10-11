@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ReviewService.Models;
 
-[Keyless]
+//[Keyless]
 [Table("comment_parent")]
 public partial class CommentParent
 {

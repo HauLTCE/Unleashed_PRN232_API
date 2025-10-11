@@ -30,6 +30,8 @@ public partial class ReviewDbContext : DbContext
 
         modelBuilder.Entity<CommentParent>(entity =>
         {
+            entity.HasKey(cp => new { cp.CommentId, cp.CommentParentId });
+
             entity.HasOne(d => d.Comment).WithMany().HasConstraintName("comment_parent_comment_id_fkey");
 
             entity.HasOne(d => d.CommentParentNavigation).WithMany().HasConstraintName("comment_parent_comment_parent_id_fkey");

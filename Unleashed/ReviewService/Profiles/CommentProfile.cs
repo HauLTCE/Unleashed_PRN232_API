@@ -8,9 +8,9 @@ namespace ReviewService.Profiles
     {
         public CommentProfile()
         {
-            CreateMap<Comment, CommentDto>();
-            CreateMap<CreateCommentDto, Comment>();
-            CreateMap<UpdateCommentDto, Comment>();
+            CreateMap<Comment, CommentDto>().ReverseMap();
+            CreateMap<CreateCommentDto, Comment>().ReverseMap();
+            CreateMap<UpdateCommentDto, Comment>().ReverseMap();
         }
     }
 }
