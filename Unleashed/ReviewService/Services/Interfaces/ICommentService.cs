@@ -8,8 +8,9 @@ namespace ReviewService.Services.Interfaces
     {
         Task<IEnumerable<CommentDto>> GetAllCommentsAsync();
         Task<CommentDto?> GetCommentByIdAsync(int id);
-        Task<CommentDto> CreateCommentAsync(CreateCommentDto commentDto);
-        Task<bool> UpdateCommentAsync(int id, UpdateCommentDto commentDto);
-        Task<bool> DeleteCommentAsync(int id);
+        Task<CommentDto> CreateReplyAsync(CreateCommentDto commentDto, Guid replyingUserId);
+        Task<bool> UpdateCommentAsync(int id, UpdateCommentDto commentDto, Guid currentUserId);
+        Task<bool> DeleteCommentAsync(int id, Guid currentUserId, IEnumerable<string> roles);
+        Task<IEnumerable<int>> GetCommentAncestorsAsync(int commentId);
     }
 }

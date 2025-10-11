@@ -4,6 +4,7 @@ using ReviewService.Repositories;
 using ReviewService.Repositories.Interfaces;
 using ReviewService.Services;
 using ReviewService.Services.Interfaces;
+using ReviewService.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +60,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
