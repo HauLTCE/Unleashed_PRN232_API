@@ -56,7 +56,7 @@ namespace DiscountService.Services
             return await _discountRepository.FindAsync(id);
         }
 
-        public async Task<UpdateDiscountDto?> GetDiscountForUpdateAsync(int id)
+        public async Task<UpdateDiscountDto?> GetDiscountForUpdateAsync(int id) //????????????????
         {
             var discount = await _discountRepository.FindAsync(id);
             if (discount == null) {
@@ -70,7 +70,7 @@ namespace DiscountService.Services
             return await _discountRepository.All().ToListAsync();
         }
 
-        public async Task<IEnumerable<SelectListItem>> GetDiscountStatusesAsync()
+        public async Task<IEnumerable<SelectListItem>> GetDiscountStatusesAsync() //????????????????????????
         {
             var statuses = await _discountRepository.All()
                 .Select(d => new { d.DiscountStatusId, d.DiscountStatus.DiscountStatusName })
@@ -83,7 +83,7 @@ namespace DiscountService.Services
             });
         }
 
-        public async Task<IEnumerable<SelectListItem>> GetDiscountTypesAsync()
+        public async Task<IEnumerable<SelectListItem>> GetDiscountTypesAsync() //?????????????????????????????/
         {
             var types = await _discountRepository.All()
                 .Select(d => new { d.DiscountTypeId, d.DiscountType.DiscountTypeName })

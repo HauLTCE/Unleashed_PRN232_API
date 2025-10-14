@@ -6,7 +6,7 @@ namespace AuthService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class RolesController : ControllerBase
+    public class RolesController : ControllerBase //auths broooo
     {
         private readonly IRoleService _roleService;
 

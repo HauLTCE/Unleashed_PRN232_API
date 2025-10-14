@@ -10,7 +10,7 @@ namespace AuthService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsersController : ControllerBase
+    public class UsersController : ControllerBase //lacking a self modification. self mods check for if the user is the same one as the one being mod. if yes, allow, if no, fuck no
     {
         private readonly IUserService _userService;
 
@@ -22,7 +22,7 @@ namespace AuthService.Controllers
         // GET: api/Users
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<UserDTO>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<UserDTO>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<UserDTO>>> GetUsers() //oi oi where the fuvk is auth bro? user list only admin side bro
         {
             var users = await _userService.GetAll();
             return Ok(users);
@@ -45,7 +45,7 @@ namespace AuthService.Controllers
         }
 
         // GET: api/Users/ByUsername/me
-        [HttpGet("ByUsername/{username}")]
+        [HttpGet("ByUsername/{username}")] //what the fuck bro?
         [ProducesResponseType(typeof(ImportServiceUserDTO), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

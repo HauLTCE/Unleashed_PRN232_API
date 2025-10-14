@@ -59,10 +59,12 @@ namespace ProductService.Services
             var brand = await _brandRepository.GetByIdAsync(id);
             if (brand == null) return null;
 
+            //roi sao k dung map?
             brand.BrandName = updateBrandDto.BrandName ?? brand.BrandName;
             brand.BrandDescription = updateBrandDto.BrandDescription ?? brand.BrandDescription;
             brand.BrandImageUrl = updateBrandDto.BrandImageUrl ?? brand.BrandImageUrl;
             brand.BrandWebsiteUrl = updateBrandDto.BrandWebsiteUrl ?? brand.BrandWebsiteUrl;
+            //
             brand.BrandUpdatedAt = DateTimeOffset.UtcNow;
 
             var updated = await _brandRepository.UpdateAsync(brand);
