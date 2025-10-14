@@ -9,7 +9,7 @@ namespace CartService.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CartController : ControllerBase
+    public class CartController : ControllerBase  //AUTH?
     {
         private readonly ICartService _cartService;
 
@@ -20,7 +20,7 @@ namespace CartService.Controllers
 
         // GET: api/cart
         [HttpGet]
-        public async Task<IActionResult> GetCarts()
+        public async Task<IActionResult> GetCarts() //khong co cai cuc cut nay broooo
         {
             var carts = await _cartService.GetCartsAsync();
             return Ok(carts);
@@ -36,7 +36,7 @@ namespace CartService.Controllers
 
         // GET: api/cart/{userId}/{variationId}
         [HttpGet("{userId}/{variationId}")]
-        public async Task<IActionResult> GetCart(Guid userId, int variationId)
+        public async Task<IActionResult> GetCart(Guid userId, int variationId) //the fuck is this bro
         {
             var cart = await _cartService.GetCartAsync(userId, variationId);
             if (cart == null)

@@ -12,7 +12,7 @@ namespace AuthService.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IRoleRepository _roleRepository;
+        private readonly IRoleRepository _roleRepository; //khong dung, tai sao them vao
         private readonly IMapper _mapper;
 
         public UserService(IMapper mapper, IUserRepository userRepository, IRoleRepository roleRepository)

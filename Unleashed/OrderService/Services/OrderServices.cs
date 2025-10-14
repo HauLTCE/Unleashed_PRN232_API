@@ -8,7 +8,7 @@ using OrderService.Services.Interfaces;
 
 namespace OrderService.Services
 {
-    public class OrderServices : IOrderService
+    public class OrderServices : IOrderService // checkout? create var single? reduce stock quantity?
     {
         private readonly IOrderRepository _orderRepository;
         private readonly IOrderStatusRepo _orderStatusRepository;

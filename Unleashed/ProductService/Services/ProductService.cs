@@ -166,11 +166,13 @@ namespace ProductService.Services
             if (product == null) return null;
 
             // 1) Update thuộc tính sản phẩm
+            // mapper dau ditcu?
             product.ProductName = dto.ProductName ?? product.ProductName;
             product.ProductCode = dto.ProductCode ?? product.ProductCode;
             product.ProductDescription = dto.ProductDescription ?? product.ProductDescription;
             product.BrandId = dto.BrandId ?? product.BrandId;
             product.ProductStatusId = dto.ProductStatusId ?? product.ProductStatusId;
+            // ?
             product.ProductUpdatedAt = DateTimeOffset.UtcNow;
 
             await _productRepository.UpdateAsync(product);

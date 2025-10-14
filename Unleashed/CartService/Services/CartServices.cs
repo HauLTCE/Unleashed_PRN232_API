@@ -46,11 +46,23 @@ namespace CartService.Services
             return await _cartRepository.SaveAsync(); 
         }
 
-        public async Task<Cart?> GetCartAsync(Guid userId, int variationId)
+        /**
+         * delete all:
+         * 1. start transaction 
+         * 2. use user ID to get all cart records
+         * 3. loop over all cart records
+         * 4. for each cart record - confirm it exists and then delete
+         * 5. confirm transaction
+         * 6. return true
+         */
+
+
+        public async Task<Cart?> GetCartAsync(Guid userId, int variationId) //what the fuck bro?
         {
             return await _cartRepository.FindAsync((userId, variationId));
         }
 
+        // KHONG CO CAI CUC CUT NAY BROOOOOO
         public async Task<IEnumerable<Cart>> GetCartsAsync()
         {
             return await _cartRepository.All().ToListAsync();
