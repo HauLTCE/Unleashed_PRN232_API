@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using OrderService.Dtos;
 using OrderService.Models;
 
 namespace OrderService.Repositories.Interfaces
 {
     public interface IOrderRepository : IGenericRepository<Guid, Order>
     {
-        Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(Guid customerId);
-        Task<IEnumerable<Order>> GetOrdersByStatusAsync(int statusId);
+        Task<PagedResult<Order>> GetOrdersAsync(string? search, string? sort, int? statusId, int page, int size);
+
+        Task<Order?> GetOrderDetailsByIdAsync(Guid orderId);
+
     }
 }
