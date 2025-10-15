@@ -56,4 +56,10 @@ namespace OrderService.Dtos
         public DateTime? OrderExpectedDeliveryDate { get; set; }
         public string? OrderNote { get; set; }
     }
+
+    public class PagedResult<T>
+    {
+        public List<T> Items { get; set; }
+        public int TotalItems { get; set; }
+    }
 }

@@ -62,6 +62,7 @@ builder.Services.AddScoped<IPaymenMethodRepo, PaymentMethodRepo>();
 builder.Services.AddScoped<IShippingRepo, ShippingRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderServices>();
+builder.Services.AddScoped<IOrderVariationSingleRepo, OrderVariationSingleRepo>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

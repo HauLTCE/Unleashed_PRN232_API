@@ -6,12 +6,18 @@ namespace OrderService.Services.Interfaces
 {
     public interface IOrderService
     {
-        Task<IEnumerable<OrderDto>> GetAllOrdersAsync();
+        Task<PagedResult<OrderDto>> GetAllOrdersAsync(string? search, string? sort, int? statusId, int page, int size);
         Task<OrderDto?> GetOrderByIdAsync(Guid orderId);
         Task<IEnumerable<OrderDto>> GetOrdersByCustomerIdAsync(Guid customerId);
-        Task<IEnumerable<OrderDto>> GetOrdersByStatusAsync(int statusId);
+
+        // Logic nghiệp vụ mới
         Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto);
-        Task<OrderDto?> UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto);
-        Task<bool> DeleteOrderAsync(Guid orderId);
+        Task CheckStockAvailabilityAsync(CreateOrderDto createOrderDto);
+        Task CancelOrderAsync(Guid orderId);
+        Task ReviewOrderByStaffAsync(Guid orderId, Guid staffId, bool isApproved);
+        Task ConfirmOrderReceivedAsync(Guid orderId);
+        Task ReturnOrderAsync(Guid orderId);
+        Task InspectReturnedOrderAsync(Guid orderId);
+        Task CompleteOrderReturnAsync(Guid orderId);
     }
 }

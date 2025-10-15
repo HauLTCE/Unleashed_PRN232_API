@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Data;
+using OrderService.Dtos;
 using OrderService.Models;
 using OrderService.Repositories.Interfaces;
 
@@ -87,6 +88,58 @@ namespace OrderService.Repositories
             {
                 return false;
             }
+        }
+        public async Task<Order?> GetOrderDetailsByIdAsync(Guid orderId)
+        {
+            return await _context.Orders
+                .Include(o => o.OrderStatus)
+                .Include(o => o.PaymentMethod)
+                .Include(o => o.ShippingMethod)
+                .Include(o => o.OrderVariationSingles)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+        }
+
+        public async Task<PagedResult<Order>> GetOrdersAsync(string? search, string? sort, int? statusId, int page, int size)
+        {
+            var query = _context.Orders
+                .Include(o => o.OrderStatus)
+                .Include(o => o.PaymentMethod)
+                .AsQueryable();
+
+            // Lọc theo trạng thái
+            if (statusId.HasValue)
+            {
+                query = query.Where(o => o.OrderStatusId == statusId.Value);
+            }
+
+            // Lọc theo từ khóa tìm kiếm (ví dụ tìm theo mã đơn hàng hoặc tên khách hàng - cần join thêm)
+            if (!string.IsNullOrEmpty(search))
+            {
+                // Giả định bạn sẽ join với bảng User để tìm theo tên, hoặc tìm theo mã đơn, mã vận đơn
+                // query = query.Where(o => o.OrderId.ToString().Contains(search) || o.User.FullName.Contains(search));
+                query = query.Where(o => o.OrderTrackingNumber.Contains(search));
+            }
+
+            // Sắp xếp
+            switch (sort)
+            {
+                case "totalPrice_asc":
+                    query = query.OrderBy(o => o.OrderTotalAmount);
+                    break;
+                case "totalPrice_desc":
+                    query = query.OrderByDescending(o => o.OrderTotalAmount);
+                    break;
+                default:
+                    // Sắp xếp ưu tiên PENDING lên đầu, sau đó theo ngày cập nhật mới nhất
+                    query = query.OrderBy(o => o.OrderStatus.OrderStatusName == "PENDING" ? 1 : 2)
+                                 .ThenByDescending(o => o.OrderUpdatedAt);
+                    break;
+            }
+
+            var totalItems = await query.CountAsync();
+            var items = await query.Skip(page * size).Take(size).ToListAsync();
+
+            return new PagedResult<Order> { Items = items, TotalItems = totalItems };
         }
     }
 }

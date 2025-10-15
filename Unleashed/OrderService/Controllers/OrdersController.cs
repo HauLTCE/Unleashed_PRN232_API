@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization; // Thêm thư viện Authorization
+using Microsoft.AspNetCore.Mvc;
 using OrderService.Dtos;
 using OrderService.Services.Interfaces;
+using System.Security.Claims; // Thêm thư viện Claims
 
 namespace OrderService.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // [Authorize] // Bật Authorize cho toàn bộ controller
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -15,12 +18,18 @@ namespace OrderService.Controllers
             _orderService = orderService;
         }
 
-        // GET: api/order
+        // GET: api/order - Endpoint được nâng cấp
         [HttpGet]
-        public async Task<IActionResult> GetAllOrders()
+        // [Authorize(Roles = "STAFF,ADMIN")] // Phân quyền cho API
+        public async Task<IActionResult> GetAllOrders(
+            [FromQuery] string? search,
+            [FromQuery] string? sort,
+            [FromQuery] int? statusId,
+            [FromQuery] int page = 0,
+            [FromQuery] int size = 10)
         {
-            var orders = await _orderService.GetAllOrdersAsync();
-            return Ok(orders);
+            var result = await _orderService.GetAllOrdersAsync(search, sort, statusId, page, size);
+            return Ok(result);
         }
 
         // GET: api/order/{orderId}
@@ -30,94 +39,120 @@ namespace OrderService.Controllers
             var order = await _orderService.GetOrderByIdAsync(orderId);
             if (order == null)
             {
-                return NotFound(new { Message = $"Order with ID {orderId} not found." });
+                return NotFound(new { Message = $"Đơn hàng với ID {orderId} không tồn tại." });
             }
             return Ok(order);
         }
 
-        // GET: api/order/customer/{customerId}
-        [HttpGet("customer/{customerId}")]
-        public async Task<IActionResult> GetOrdersByCustomerId(Guid customerId)
+        // GET: api/order/my-orders (Lấy đơn hàng của người dùng đang đăng nhập)
+        [HttpGet("my-orders")]
+        // [Authorize(Roles = "CUSTOMER")]
+        public async Task<IActionResult> GetMyOrders()
         {
-            var orders = await _orderService.GetOrdersByCustomerIdAsync(customerId);
+            // Lấy UserId từ token/context
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                return Unauthorized();
+            }
+
+            var orders = await _orderService.GetOrdersByCustomerIdAsync(userId);
             return Ok(orders);
         }
 
-        // GET: api/order/status/{statusId}
-        [HttpGet("status/{statusId}")]
-        public async Task<IActionResult> GetOrdersByStatus(int statusId)
+        // POST: api/order/check-stock
+        [HttpPost("check-stock")]
+        // [Authorize(Roles = "CUSTOMER")]
+        public async Task<IActionResult> CheckStockAvailability([FromBody] CreateOrderDto createOrderDto)
         {
-            var orders = await _orderService.GetOrdersByStatusAsync(statusId);
-            return Ok(orders);
+            try
+            {
+                await _orderService.CheckStockAvailabilityAsync(createOrderDto);
+                return Ok(new { Message = "Sản phẩm có sẵn." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         // POST: api/order
         [HttpPost]
+        // [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto createOrderDto)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            // Gán UserId của người dùng đang đăng nhập
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
-                return BadRequest(ModelState);
+                return Unauthorized();
             }
+            createOrderDto.UserId = userId;
+
             try
             {
                 var order = await _orderService.CreateOrderAsync(createOrderDto);
                 return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, order);
             }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = ex.Message });
             }
         }
 
-        // PUT: api/order/{orderId}
-        [HttpPut("{orderId}")]
-        public async Task<IActionResult> UpdateOrder(Guid orderId, [FromBody] UpdateOrderDto updateOrderDto)
+        // PUT: api/order/{orderId}/cancel
+        [HttpPut("{orderId}/cancel")]
+        public async Task<IActionResult> CancelOrder(Guid orderId)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
             try
             {
-                var updatedOrder = await _orderService.UpdateOrderAsync(orderId, updateOrderDto);
-                if (updatedOrder == null)
-                {
-                    return NotFound(new { Message = $"Order with ID {orderId} not found." });
-                }
-                return Ok(updatedOrder);
+                await _orderService.CancelOrderAsync(orderId);
+                return Ok(new { Message = "Hủy đơn hàng thành công." });
             }
-            catch (ArgumentException ex)
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
             {
                 return BadRequest(new { Message = ex.Message });
             }
-            catch (Exception ex)
+        }
+
+        // PUT: api/order/{orderId}/staff-review
+        [HttpPut("{orderId}/staff-review")]
+        // [Authorize(Roles = "STAFF,ADMIN")]
+        public async Task<IActionResult> ReviewOrder(Guid orderId, [FromBody] ReviewOrderDto reviewDto)
+        {
+            var staffIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(staffIdString) || !Guid.TryParse(staffIdString, out Guid staffId))
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return Unauthorized();
+            }
+
+            try
+            {
+                await _orderService.ReviewOrderByStaffAsync(orderId, staffId, reviewDto.IsApproved);
+                return Ok(new { Message = "Đã duyệt đơn hàng." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
-        // DELETE: api/order/{orderId}
-        [HttpDelete("{orderId}")]
-        public async Task<IActionResult> DeleteOrder(Guid orderId)
+        // Cần thêm DTO cho việc review
+        public class ReviewOrderDto
         {
-            try
-            {
-                var deleted = await _orderService.DeleteOrderAsync(orderId);
-                if (!deleted)
-                {
-                    return NotFound(new { Message = $"Order with ID {orderId} not found." });
-                }
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = ex.Message });
-            }
+            public bool IsApproved { get; set; }
         }
+
+        // ... (Thêm các endpoint khác cho Confirm Receipt, Return,...)
     }
 }
