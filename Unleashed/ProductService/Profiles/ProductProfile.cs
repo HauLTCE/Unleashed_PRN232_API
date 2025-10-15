@@ -12,30 +12,28 @@ namespace ProductService.Profiles
     {
         public ProductProfile()
         {
-            //map DTO -> Model
+            // --- DTO -> Model ---
             CreateMap<CreateProductDTO, Product>();
-            CreateMap<UpdateProductDTO, Product>();
+            CreateMap<UpdateProductDTO, Product>()
+                // BỎ QUA CÁC THUỘC TÍNH NULL TRONG DTO KHI MAP SANG ENTITY
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
+
             CreateMap<CreateVariationDTO, Variation>();
-            CreateMap<UpdateVariationDTO, Variation>();
-            CreateMap<ProductStatus, ProductStatusDTO>();
-            CreateMap<Brand, BrandDetailDTO>();
-            CreateMap<Category, CategoryDetailDTO>();
-            CreateMap<Size, SizeDTO>();
-            CreateMap<Color, ColorDTO>();
+            CreateMap<UpdateVariationDTO, Variation>()
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
+
             CreateMap<CreateCategoryDTO, Category>();
             CreateMap<CreateBrandDTO, Brand>();
 
-            //model -> DTO
+            // --- Model -> DTO ---
             CreateMap<Product, ProductDetailDTO>();
             CreateMap<Product, ProductListDTO>();
-            CreateMap<Brand, BrandDetailDTO>();
-            CreateMap<Category, CategoryDetailDTO>();
             CreateMap<Variation, VariationDetailDTO>();
-            CreateMap<Size, SizeDTO>();
-            CreateMap<Color, ColorDTO>();
             CreateMap<ProductStatus, ProductStatusDTO>();
             CreateMap<Brand, BrandDetailDTO>();
             CreateMap<Category, CategoryDetailDTO>();
+            CreateMap<Size, SizeDTO>();
+            CreateMap<Color, ColorDTO>();
         }
     }
 }
