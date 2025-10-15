@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace AuthService.DTOs.UserDTOs
+namespace AuthService.DTOs.AuthenDTOs
 {
-    public class ChangePasswordUserDTO
+    public class ChangePasswordDTO
     {
             [Required]
             public string? OldPassword { get; set; }
