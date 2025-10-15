@@ -17,12 +17,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
+    options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins(builder.Configuration["FrontEnd"])
                   .AllowAnyMethod()
-                  .AllowAnyHeader();
+                  .WithHeaders("Content-Type", "Authorization");
         });
 });
 
@@ -116,7 +116,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-app.UseCors("AllowAll");
+app.UseCors("AllowReactApp");
 
 app.MapDefaultEndpoints();
 
@@ -128,6 +128,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

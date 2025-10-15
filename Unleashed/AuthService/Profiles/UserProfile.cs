@@ -19,6 +19,7 @@ public class UserProfile : Profile
         dest => dest.RoleName,
         opt => opt.MapFrom(src => src.Role.RoleName)
         );
+
         CreateMap<User, ImportServiceUserDTO>();
         // ===================================================================
         //  WRITE MAPPINGS (DTO -> Entity)
@@ -26,7 +27,7 @@ public class UserProfile : Profile
 
         // Mapping for creating a new user from the registration DTO.
         CreateMap<CreateUserDTO, User>();
-
+        CreateMap<CreateExternalUserDTO, User>();
         // Mapping for updating an existing user.
         // This is a crucial configuration for patch/update operations.
         // It tells AutoMapper to only map properties from the source DTO

@@ -50,6 +50,13 @@ namespace AuthService.Repositories
                           .FirstOrDefaultAsync(u => u.UserId == id);
         }
 
+        public async Task<User?> GetByEmail(string email)
+        {
+            return await _authDbContext.Users
+                 .Include(u => u.Role)
+                 .FirstOrDefaultAsync(u => u.UserEmail.ToLower().Equals(email.ToLower()));
+        }
+
         public async Task<User?> GetByUsername(string username)
         {
             return await _authDbContext.Users

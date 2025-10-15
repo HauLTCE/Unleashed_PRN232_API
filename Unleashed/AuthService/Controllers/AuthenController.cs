@@ -5,7 +5,8 @@ using AuthService.Services.IServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization; // Required for [Authorize]
 using System.Security.Claims; // Required for ClaimTypes
-using Microsoft.AspNetCore.Http; // Required for StatusCodes
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging; // Required for StatusCodes
 
 namespace AuthService.Controllers
 {
@@ -14,10 +15,12 @@ namespace AuthService.Controllers
     public class AuthenController : ControllerBase
     {
         private readonly IAuthenService _authenService;
+        private readonly ILogger<AuthenController> _logger;
 
-        public AuthenController(IAuthenService authenService)
+        public AuthenController(IAuthenService authenService, ILogger<AuthenController> logger)
         {
             _authenService = authenService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -65,26 +68,98 @@ namespace AuthService.Controllers
         /// </summary>
         /// <returns>A success message with the authenticated user's ID.</returns>
         [HttpGet("check-auth")]
-        [Authorize] // This attribute protects the endpoint
+        [Authorize] // This attribute now protects the endpoint
         [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult CheckAuthorization()
         {
             // The [Authorize] attribute handles JWT validation. 
-            // If the code reaches this point, the user is authenticated.
-
-            // You can access user claims from the HttpContext.User principal
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            // If the code reaches this point, the token was valid and the user is authenticated.
             var username = User.FindFirst(ClaimTypes.Name)?.Value;
             var roleName = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            if (userId == null)
+            return Ok($"Authorization successful. Welcome, {username} with role {roleName}!");
+        }
+
+        [HttpPost("google-login")]
+        [ProducesResponseType(typeof(LoginUserResponeDTO), 200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleLoginDTO googleLoginDto)
+        {
+            try
             {
-                // This is a safeguard, but the authorize attribute should prevent this.
-                return Unauthorized();
+                var loginResponse = await _authenService.LoginWithGoogleAsync(googleLoginDto);
+
+                if (loginResponse == null)
+                {
+                    // This indicates authentication failed (e.g., invalid Google token)
+                    return Unauthorized(new { message = "Google authentication failed." });
+                }
+
+                // Authentication was successful, return the JWT
+                return Ok(loginResponse);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception (ex) with your logging framework
+                return StatusCode(500, new { message = "An internal server error occurred." });
+            }
+        }
+
+        /* // NOTE: The corresponding service method 'ResetPasswordAsync' is commented out in AuthenService.
+       // Uncomment this endpoint once the service-level implementation is complete.
+
+       /// <summary>
+       /// Resets a user's password using a valid reset token.
+       /// </summary>
+       /// <param name="resetPasswordDto">The reset token and the new password.</param>
+       /// <returns>A success or failure message.</returns>
+       [HttpPost("reset-password")]
+       [ProducesResponseType(StatusCodes.Status200OK)]
+       [ProducesResponseType(StatusCodes.Status400BadRequest)]
+       public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO resetPasswordDto)
+       {
+           var result = await _authenService.ResetPasswordAsync(resetPasswordDto);
+
+           if (!result)
+           {
+               return BadRequest(new { message = "Invalid or expired password reset token." });
+           }
+
+           return Ok(new { message = "Password has been reset successfully." });
+       }
+       */
+
+        /// <summary>
+        /// Changes the password for the currently authenticated user.
+        /// </summary>
+        /// <param name="changePasswordDto">An object containing the user's old and new passwords.</param>
+        /// <returns>A success or failure message.</returns>
+        [HttpPost("change-password")]
+        [Authorize] // Requires the user to be logged in
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO changePasswordDto)
+        {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                // This case should be rare if [Authorize] is working, but it's a good safeguard.
+                return Unauthorized(new { message = "User identifier claim is missing or invalid." });
             }
 
-            return Ok($"Authorization successful. Welcome, {username} (ID: {userId}) with role {roleName}!");
+            var result = await _authenService.ChangePasswordAsync(userId, changePasswordDto);
+
+            if (!result)
+            {
+                return BadRequest(new { message = "Failed to change password. Please verify your current password." });
+            }
+
+            return Ok(new { message = "Password changed successfully." });
         }
     }
 }
+

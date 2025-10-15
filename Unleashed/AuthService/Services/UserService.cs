@@ -37,7 +37,21 @@ namespace AuthService.Services
             return null;
         }
 
-        // --- COMPLETED METHODS START HERE ---
+        public async Task<UserDTO?> CreateUser(CreateExternalUserDTO createUserDTO)
+        {
+
+            var user = _mapper.Map<User>(createUserDTO);
+            user.UserId = Guid.NewGuid();
+            user.UserCreatedAt = DateTime.Now;
+            user.UserUpdatedAt = DateTime.Now;
+
+            if (await _userRepository.CreateAsync(user))
+            {
+                return await _userRepository.SaveAsync() ? _mapper.Map<UserDTO>(user) : null;
+            }
+            return null;
+        }
+
 
         public async Task<IEnumerable<UserDTO>> GetAll()
         {
@@ -54,14 +68,6 @@ namespace AuthService.Services
             return _mapper.Map<UserDTO>(user);
         }
 
-        /// <summary>
-        /// Updates an existing user.
-        /// NOTE: The method signature was changed to include the user's 'id'
-        /// to identify which user to update.
-        /// </summary>
-        /// <param name="id">The ID of the user to update.</param>
-        /// <param name="updateUserDTO">The DTO with updated information.</param>
-        /// <returns>True if the update was successful, otherwise false.</returns>
         public async Task<bool> UpdateUser(Guid id, UpdateUserDTO updateUserDTO)
         {
             // 1. Find the existing user in the database
