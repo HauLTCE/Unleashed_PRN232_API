@@ -1,10 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+﻿using AuthService.DTOs.UserDTOs;
 using AuthService.Services.IServices;
-using AuthService.DTOs.UserDTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http; // Added for StatusCodes
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace AuthService.Controllers
 {
@@ -29,11 +31,21 @@ namespace AuthService.Controllers
         }
 
         // GET: api/Users/5
+        [Authorize] 
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(UserDTO), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserDTO>> GetUser(Guid id)
         {
+           
+            var claimsUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if ((!User.IsInRole("ADMIN") || !User.IsInRole("STAFF")) && claimsUserId != id.ToString())
+            {
+                // If they are not an Admin and not requesting their own info, deny access.
+                return Forbid();
+            }
+
             var user = await _userService.GetById(id);
 
             if (user == null)
