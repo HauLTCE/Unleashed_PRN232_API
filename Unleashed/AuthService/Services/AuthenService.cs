@@ -43,8 +43,9 @@ namespace AuthService.Services
 
         public async Task<UserDTO?> RegisterAsync(CreateUserDTO createUserDto)
         {
-            // Delegate user creation to the UserService
-            return await _userService.CreateUser(createUserDto);
+            // Delegate user creation to the UserService, which already handles
+            // password hashing, mapping, and saving.
+            return await _userService.CreateUser(createUserDto); 
         }
 
         public async Task<LoginUserResponeDTO?> LoginAsync(LoginUserDTO loginDto)

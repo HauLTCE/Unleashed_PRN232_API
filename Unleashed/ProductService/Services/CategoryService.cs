@@ -59,9 +59,12 @@ namespace ProductService.Services
             var category = await _categoryRepository.GetByIdAsync(id);
             if (category == null) return null;
 
+            // mapper?
             category.CategoryName = updateCategoryDto.CategoryName ?? category.CategoryName;
             category.CategoryDescription = updateCategoryDto.CategoryDescription ?? category.CategoryDescription;
             category.CategoryImageUrl = updateCategoryDto.CategoryImageUrl ?? category.CategoryImageUrl;
+            // ?
+            
             category.CategoryUpdatedAt = DateTimeOffset.UtcNow;
 
             var updated = await _categoryRepository.UpdateAsync(category);

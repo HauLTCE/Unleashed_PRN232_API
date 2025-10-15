@@ -8,57 +8,63 @@ using OrderService.Services.Interfaces;
 
 namespace OrderService.Services
 {
-    public class OrderServices : IOrderService
+    public class OrderServices : IOrderService // checkout? create var single? reduce stock quantity?
     {
         private readonly IOrderRepository _orderRepository;
         private readonly IOrderStatusRepo _orderStatusRepository;
         private readonly IPaymenMethodRepo _paymentMethodRepository;
         private readonly IShippingRepo _shippingRepository;
+        private readonly IOrderVariationSingleRepo _orderVariationSingleRepository;
         private readonly IMapper _mapper;
 
-        public OrderServices(IOrderRepository orderRepository, IMapper mapper, IOrderStatusRepo orderStatusRepository, IPaymenMethodRepo paymentMethodRepository, IShippingRepo _shippingRepo)
+        public OrderServices(IOrderRepository orderRepository, IMapper mapper, IOrderStatusRepo orderStatusRepository, IPaymenMethodRepo paymentMethodRepository, IShippingRepo _shippingRepo, IOrderVariationSingleRepo orderVariationSingleRepository)
         {
             _orderRepository = orderRepository;
             _mapper = mapper;
             _orderStatusRepository = orderStatusRepository;
             _paymentMethodRepository = paymentMethodRepository;
             _shippingRepository = _shippingRepo;
+            _orderVariationSingleRepository = orderVariationSingleRepository;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto)
         {
-            if (createOrderDto.OrderStatusId.HasValue)
-            {
-                var status = await _orderStatusRepository.FindAsync(createOrderDto.OrderStatusId.Value);
-                if (status == null)
-                {
-                    throw new ArgumentException($"Order status with ID {createOrderDto.OrderStatusId.Value} does not exist.");
-                }
-            }
-            if (createOrderDto.PaymentMethodId.HasValue)
-            {
-                var paymentMethod = await _paymentMethodRepository.FindAsync(createOrderDto.PaymentMethodId.Value);
-                if (paymentMethod == null)
-                {
-                    throw new ArgumentException($"Payment method with ID {createOrderDto.PaymentMethodId.Value} does not exist.");
-                }
-            }
-            if (createOrderDto.ShippingMethodId.HasValue)
-            {
-                var shippingMethod = await _shippingRepository.FindAsync(createOrderDto.ShippingMethodId.Value);
-                if (shippingMethod == null)
-                {
-                    throw new ArgumentException($"Shipping method with ID {createOrderDto.ShippingMethodId.Value} does not exist.");
-                }
-            }
             var order = _mapper.Map<Order>(createOrderDto);
             order.OrderId = Guid.NewGuid();
             order.OrderCreatedAt = DateTimeOffset.UtcNow;
             order.OrderUpdatedAt = DateTimeOffset.UtcNow;
+            var status = await _orderStatusRepository.FindAsync(createOrderDto.OrderStatusId.Value);
+            if (status == null)
+            {
+                throw new ArgumentException($"Order status with ID {createOrderDto.OrderStatusId} does not exist.");
+            }
+            var paymentMethod = await _paymentMethodRepository.FindAsync(createOrderDto.PaymentMethodId.Value);
+            if (paymentMethod == null)
+            {
+                throw new ArgumentException($"Payment method with ID {createOrderDto.PaymentMethodId} does not exist.");
+            }
+            var shippingMethod = await _shippingRepository.FindAsync(createOrderDto.ShippingMethodId.Value);
+            if (shippingMethod == null)
+            {
+                throw new ArgumentException($"Shipping method with ID {createOrderDto.ShippingMethodId} does not exist.");
+            }
             var created = await _orderRepository.CreateAsync(order);
             if (!created)
             {
                 throw new Exception("Failed to create order.");
+            }
+            if (createOrderDto.OrderVariationSingles != null && createOrderDto.OrderVariationSingles.Any())
+            {
+                foreach (var ovsDto in createOrderDto.OrderVariationSingles)
+                {
+                    var ovs = _mapper.Map<OrderVariationSingle>(ovsDto);
+                    ovs.OrderId = order.OrderId;
+                    var ovsCreated = await _orderVariationSingleRepository.CreateAsync(ovs);
+                    if (!ovsCreated)
+                    {
+                        throw new Exception("Failed to create order variation single.");
+                    }
+                }
             }
             var saved = await _orderRepository.SaveAsync();
             if (!saved)
