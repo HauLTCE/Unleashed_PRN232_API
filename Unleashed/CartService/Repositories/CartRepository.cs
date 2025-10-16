@@ -95,5 +95,16 @@ namespace CartService.Repositories
                 return false;
             }
         }
+        public async Task<bool> DeleteAllByUserIdAsync(Guid userId)
+        {
+            var userCarts = _context.Carts.Where(c => c.UserId == userId);
+            if (!userCarts.Any())
+            {
+                return true; // Không có gì để xóa
+            }
+
+            _context.Carts.RemoveRange(userCarts);
+            return await SaveAsync();
+        }
     }
 }
