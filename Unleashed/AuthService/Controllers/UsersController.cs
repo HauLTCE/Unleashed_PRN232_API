@@ -1,8 +1,10 @@
-﻿using AuthService.DTOs.UserDTOs;
+﻿using AuthService.DTOs.PageResponse;
+using AuthService.DTOs.UserDTOs;
 using AuthService.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http; // Added for StatusCodes
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
@@ -22,12 +24,36 @@ namespace AuthService.Controllers
         }
 
         // GET: api/Users
+        [Authorize(Roles = "ADMIN")]
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<UserDTO>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<UserDTO>>> GetUsers() //oi oi where the fuvk is auth bro? user list only admin side bro
+        [ProducesResponseType(typeof(PagedResponse<UserDTO>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponse<UserDTO>>> GetUsers(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchQuery = null)
         {
-            var users = await _userService.GetAll();
-            return Ok(users);
+            var query = _userService.GetAll();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
+                query = query.Where(u =>
+                    (u.UserFullname != null && u.UserFullname.ToLower().Contains(lowerCaseSearchTerm)) ||
+                    (u.UserUsername != null && u.UserUsername.ToLower().Contains(lowerCaseSearchTerm)) ||
+                    (u.UserEmail != null && u.UserEmail.ToLower().Contains(lowerCaseSearchTerm))
+                );
+            }
+
+            var totalRecords = await query.CountAsync();
+            
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var pagedResponse = new PagedResponse<UserDTO>(items, totalRecords, pageNumber, pageSize);
+
+            return Ok(pagedResponse);
         }
 
         // GET: api/Users/5
@@ -40,9 +66,9 @@ namespace AuthService.Controllers
            
             var claimsUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if ((!User.IsInRole("ADMIN") || !User.IsInRole("STAFF")) && claimsUserId != id.ToString())
+            if (!User.IsInRole("ADMIN") && claimsUserId != id.ToString())
             {
-                // If they are not an Admin and not requesting their own info, deny access.
+                // If they are not an Admin AND not requesting their own info, deny access.
                 return Forbid();
             }
 
@@ -79,6 +105,7 @@ namespace AuthService.Controllers
         }
 
         // POST: api/Users
+        [Authorize(Roles = "ADMIN")]
         [HttpPost]
         [ProducesResponseType(typeof(UserDTO), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -95,11 +122,19 @@ namespace AuthService.Controllers
         }
 
         // PUT: api/Users/5
+        [Authorize]
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PutUser(Guid id, UpdateUserDTO updateUserDto)
         {
+            var claimsUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (claimsUserId != id.ToString())
+            {
+                // If they are not requesting their own info, deny access.
+                return Forbid();
+            }
             var success = await _userService.UpdateUser(id, updateUserDto);
 
             if (!success)
@@ -111,11 +146,20 @@ namespace AuthService.Controllers
         }
 
         // DELETE: api/Users/5
+        [Authorize(Roles = "ADMIN, CUSTOMER")]
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteUser(Guid id)
         {
+            var claimsUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!User.IsInRole("ADMIN") && claimsUserId != id.ToString())
+            {
+                // If they are not ADMIN OR not requesting their own info, deny access.
+                return Forbid();
+            }
+
             var success = await _userService.DeleteUser(id);
 
             if (!success)

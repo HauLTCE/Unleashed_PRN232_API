@@ -53,11 +53,11 @@ namespace AuthService.Services
         }
 
 
-        public async Task<IEnumerable<UserDTO>> GetAll()
+        public IQueryable<UserDTO> GetAll()
         {
             var users = _userRepository.All();
             // Map the list of User entities to a list of UserDTOs
-            return _mapper.Map<IEnumerable<UserDTO>>(await users.ToListAsync());
+            return _mapper.ProjectTo<UserDTO>(users);
         }
 
         public async Task<UserDTO?> GetById(Guid id)
