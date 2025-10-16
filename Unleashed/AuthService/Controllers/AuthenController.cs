@@ -73,12 +73,8 @@ namespace AuthService.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult CheckAuthorization()
         {
-            // The [Authorize] attribute handles JWT validation. 
-            // If the code reaches this point, the token was valid and the user is authenticated.
-            var username = User.FindFirst(ClaimTypes.Name)?.Value;
             var roleName = User.FindFirst(ClaimTypes.Role)?.Value;
-
-            return Ok($"Authorization successful. Welcome, {username} with role {roleName}!");
+            return Ok(roleName);
         }
 
         [HttpPost("google-login")]
@@ -137,7 +133,7 @@ namespace AuthService.Controllers
         /// <param name="changePasswordDto">An object containing the user's old and new passwords.</param>
         /// <returns>A success or failure message.</returns>
         [HttpPost("change-password")]
-        [Authorize] // Requires the user to be logged in
+        [Authorize] 
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
