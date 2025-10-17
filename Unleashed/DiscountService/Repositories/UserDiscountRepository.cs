@@ -1,43 +1,85 @@
-﻿using DiscountService.Models;
+﻿// Repositories/UserDiscountRepository.cs
+using DiscountService.Data;
+using DiscountService.Models;
 using DiscountService.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace DiscountService.Repositories
 {
     public class UserDiscountRepository : IUserDiscountRepository
     {
-        public IQueryable<UserDiscount> All()
+        private readonly DiscountDbContext _context;
+
+        public UserDiscountRepository(DiscountDbContext context)
         {
-            throw new NotImplementedException();
+            _context = context;
         }
 
-        public Task<bool> CreateAsync(UserDiscount entity)
+        public async Task AddRangeAsync(IEnumerable<UserDiscount> userDiscounts)
         {
-            throw new NotImplementedException();
+            await _context.UserDiscounts.AddRangeAsync(userDiscounts);
+        }
+
+        public IQueryable<UserDiscount> All()
+        {
+            return _context.UserDiscounts.AsQueryable();
+        }
+
+        public async Task<bool> CreateAsync(UserDiscount entity)
+        {
+            await _context.UserDiscounts.AddAsync(entity);
+            return true;
         }
 
         public bool Delete(UserDiscount entity)
         {
-            throw new NotImplementedException();
+            _context.UserDiscounts.Remove(entity);
+            return true;
         }
 
-        public Task<UserDiscount?> FindAsync((Guid, int) id)
+        public async Task<bool> ExistsAsync(Guid userId, int discountId)
         {
-            throw new NotImplementedException();
+            return await _context.UserDiscounts.AnyAsync(ud => ud.UserId == userId && ud.DiscountId == discountId);
         }
 
-        public Task<bool> IsAny((Guid, int) id)
+        // Chỉnh sửa lại khóa chính từ (Guid, int) thành (int, Guid) cho nhất quán
+        public async Task<UserDiscount?> FindAsync((Guid, int) id)
         {
-            throw new NotImplementedException();
+            return await _context.UserDiscounts.FindAsync(id.Item1, id.Item2);
         }
 
-        public Task<bool> SaveAsync()
+        public async Task<List<int>> FindDiscountIdsByUserIdAsync(Guid userId)
         {
-            throw new NotImplementedException();
+            return await _context.UserDiscounts
+                .Where(ud => ud.UserId == userId)
+                .Select(ud => ud.DiscountId)
+                .ToListAsync();
+        }
+
+        public async Task<UserDiscount?> FindByUserIdAndDiscountIdAsync(Guid userId, int discountId)
+        {
+            return await _context.UserDiscounts.FirstOrDefaultAsync(ud => ud.UserId == userId && ud.DiscountId == discountId);
+        }
+
+        public async Task<List<UserDiscount>> FindByUserIdAsync(Guid userId)
+        {
+            return await _context.UserDiscounts.Where(ud => ud.UserId == userId).ToListAsync();
+        }
+
+        public async Task<bool> IsAny((Guid,int) id)
+        {
+            return await _context.UserDiscounts.AnyAsync(ud => ud.UserId == id.Item1 && ud.DiscountId == id.Item2);
+        }
+
+        public async Task<bool> SaveAsync()
+        {
+            return await _context.SaveChangesAsync() > 0;
         }
 
         public bool Update(UserDiscount entity)
         {
-            throw new NotImplementedException();
+            _context.UserDiscounts.Update(entity);
+            return true;
         }
     }
 }

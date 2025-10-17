@@ -12,10 +12,11 @@ namespace DiscountService.Profiles
             CreateMap<Discount, DiscountDto>();
             CreateMap<CreateDiscountDto,Discount>();
             CreateMap<UpdateDiscountDto, Discount>();
-
+            CreateMap<DiscountViewDto, Discount>();
             CreateMap<DiscountDto,Discount>();
             CreateMap<Discount,CreateDiscountDto>();
             CreateMap<Discount, UpdateDiscountDto>();
+            CreateMap<Discount, DiscountViewDto>();
         }
     }
 }

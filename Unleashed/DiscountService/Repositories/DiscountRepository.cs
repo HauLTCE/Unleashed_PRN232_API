@@ -67,5 +67,35 @@ namespace DiscountService.Repositories
                 return false;
             }
         }
+        public async Task<Discount?> FindByCodeAsync(string code)
+        {
+            return await _context.Discounts
+                .Include(d => d.DiscountStatus)
+                .Include(d => d.DiscountType)
+                .FirstOrDefaultAsync(d => d.DiscountCode == code);
+        }
+
+        public async Task<List<Discount>> GetDiscountsToActivateAsync(int inactiveStatusId, DateTimeOffset now)
+        {
+            return await _context.Discounts
+                .Where(d => d.DiscountStatusId == inactiveStatusId &&
+                            d.DiscountStartDate <= now &&
+                            d.DiscountEndDate > now)
+                .ToListAsync();
+        }
+
+        public async Task<List<Discount>> GetActiveDiscountsWithUsageLimitAsync(int activeStatusId)
+        {
+            return await _context.Discounts
+                .Where(d => d.DiscountStatusId == activeStatusId && d.DiscountUsageLimit != null)
+                .ToListAsync();
+        }
+
+        public async Task<List<Discount>> GetDiscountsToExpireAsync(int expiredStatusId, DateTimeOffset now)
+        {
+            return await _context.Discounts
+                .Where(d => d.DiscountEndDate <= now && d.DiscountStatusId != expiredStatusId)
+                .ToListAsync();
+        }
     }
 }
