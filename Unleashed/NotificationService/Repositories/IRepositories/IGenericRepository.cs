@@ -1,4 +1,4 @@
-﻿namespace AuthService.Repositories.IRepositories
+﻿namespace NotificationService.Repositories.IRepositories
 {
     public interface IGenericRepository<Tid,T>
     {

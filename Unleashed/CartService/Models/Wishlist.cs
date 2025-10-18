@@ -1,18 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
 
-namespace CartService.Models;
-
-[Keyless]
-[Table("wishlist")]
-public partial class Wishlist
+namespace CartService.Models
 {
-    [Column("user_id")]
-    public Guid? UserId { get; set; }
+    [Table("wishlist")]
+    [PrimaryKey(nameof(UserId), nameof(ProductId))]
+    public partial class Wishlist
+    {
+        [Column("user_id")]
+        public Guid UserId { get; set; }
 
-    [Column("product_id")]
-    public Guid? ProductId { get; set; }
+        [Column("product_id")]
+        public Guid ProductId { get; set; }
+    }
 }

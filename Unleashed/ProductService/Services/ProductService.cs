@@ -267,5 +267,22 @@ namespace ProductService.Services
         {
             throw new NotImplementedException();
         }
+
+
+        public async Task<ProductForWishlistDTO?> GetProductInfoForWishlistAsync(Guid productId)
+        {
+            var product = await _productRepository.GetByIdWithFirstVariationAsync(productId);
+
+            if (product == null)
+            {
+                return null;
+            }
+
+            var dto = _mapper.Map<ProductForWishlistDTO>(product);
+            dto.ProductImage = product.Variations.FirstOrDefault()?.VariationImage;
+
+            return dto;
+        }
+
     }
 }

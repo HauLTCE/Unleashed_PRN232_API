@@ -13,5 +13,6 @@ namespace ProductService.Repositories.IRepositories
         Task<bool> ExistsAsync(Guid id);
 
         Task<bool> DeleteByProductIdAsync(Guid productId);
+        Task<Product?> GetByIdWithFirstVariationAsync(Guid productId);
     }
 }

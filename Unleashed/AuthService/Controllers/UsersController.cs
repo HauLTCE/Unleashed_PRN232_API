@@ -1,4 +1,4 @@
-﻿using AuthService.DTOs.PageResponse;
+﻿using AuthService.DTOs.PagedResponse;
 using AuthService.DTOs.UserDTOs;
 using AuthService.Services.IServices;
 using Microsoft.AspNetCore.Authorization;

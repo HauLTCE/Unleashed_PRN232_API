@@ -1,5 +1,4 @@
-﻿using AuthService.Repositories.IRepositories;
-using NotificationService.Models;
+﻿using NotificationService.Models;
 
 namespace NotificationService.Repositories.IRepositories
 {

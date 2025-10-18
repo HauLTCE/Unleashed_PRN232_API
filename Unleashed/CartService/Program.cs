@@ -1,11 +1,11 @@
 ﻿using CartService.Data;
-using CartService.Repositories;
-using CartService.Services;
-using CartService.Repositories.Interfaces;
-using CartService.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using CartService.Profiles;
+using CartService.Repositories;
+using CartService.Repositories.Interfaces;
+using CartService.Services;
+using CartService.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,14 +28,14 @@ builder.Services.AddHttpClient("productservice", client =>
     client.BaseAddress = new Uri("http://productservice");
 });
 
-builder.Services.AddHttpClient("orderservice", client =>
-{
-    client.BaseAddress = new Uri("http://orderservice");
-});
-
-builder.Services.AddHttpClient("orderservice", client =>
+builder.Services.AddHttpClient("inventoryservice", client =>
 {
     client.BaseAddress = new Uri("http://inventoryservice");
+});
+
+builder.Services.AddHttpClient("discountservice", client =>
+{
+    client.BaseAddress = new Uri("http://discountservice");
 });
 
 
@@ -44,18 +44,28 @@ builder.Services.AddAutoMapper(cfg =>
     cfg.AddMaps(typeof(CartProfile).Assembly);
 });
 
-
-// Add services to the container.
 builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<ICartService, CartService.Services.CartService>();
+builder.Services.AddScoped<IWishlistRepository, WishlistRepository>();
+builder.Services.AddScoped<IWishlistService, WishlistService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["services:authservice:http:0"];
+        options.Audience = "cart_service_api";
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+    });
+
+builder.Services.AddAuthorization();
+
+
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -64,6 +74,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseCors("AllowAll");

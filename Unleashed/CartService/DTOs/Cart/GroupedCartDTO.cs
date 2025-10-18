@@ -1,4 +1,4 @@
-﻿namespace CartService.DTOs
+﻿namespace CartService.DTOs.Cart
 {
     public class GroupedCartDTO
     {

@@ -84,5 +84,14 @@ namespace ProductService.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
+
+
+        public async Task<Product?> GetByIdWithFirstVariationAsync(Guid productId)
+        {
+            return await _context.Products
+                .Include(p => p.Variations.OrderBy(v => v.VariationId))
+                .FirstOrDefaultAsync(p => p.ProductId == productId);
+        }
+
     }
 }

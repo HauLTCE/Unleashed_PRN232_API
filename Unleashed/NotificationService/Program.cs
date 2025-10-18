@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using NotificationService;
 using NotificationService.Data;
 using NotificationService.Profiles;
 using NotificationService.Repositories;
