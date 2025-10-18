@@ -1,4 +1,4 @@
-﻿namespace AuthService.DTOs.PageResponse
+﻿namespace AuthService.DTOs.PagedResponse
 {
     public class PagedResponse<T>
     {

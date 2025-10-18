@@ -90,5 +90,29 @@ namespace ProductService.Controllers
             if (!result) return NotFound();
             return NoContent();
         }
+
+        // GET: api/products/for-wishlist/{productId}
+        [HttpGet("for-wishlist/{productId:guid}")]
+        public async Task<IActionResult> GetProductForWishlist(Guid productId)
+        {
+            try
+            {
+                var productInfo = await _productService.GetProductInfoForWishlistAsync(productId);
+
+                if (productInfo == null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(productInfo);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get product info for wishlist. ProductId={ProductId}", productId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+
     }
 }

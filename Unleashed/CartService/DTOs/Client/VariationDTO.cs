@@ -1,4 +1,4 @@
-﻿namespace CartService.DTOs
+﻿namespace CartService.DTOs.Client
 {
     public class VariationDTO
     {

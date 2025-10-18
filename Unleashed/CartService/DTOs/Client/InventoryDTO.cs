@@ -1,4 +1,4 @@
-﻿namespace CartService.DTOs.ClientDTO
+﻿namespace CartService.DTOs.Client
 {
     public class InventoryDTO
     {

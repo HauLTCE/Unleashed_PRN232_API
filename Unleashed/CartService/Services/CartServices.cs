@@ -1,18 +1,11 @@
 ﻿using AutoMapper;
-using CartService.Dtos;
 using CartService.DTOs;
+using CartService.DTOs.Cart;
+using CartService.DTOs.Client;
 using CartService.Models;
 using CartService.Repositories.Interfaces;
 using CartService.Services.Interfaces;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Threading.Tasks;
-// BƯỚC 1: Thêm using cho các DTO client mới tạo
-using CartService.DTOs.ClientDTOs;
-using CartService.DTOs.ClientDTO;
 
 namespace CartService.Services
 {
@@ -39,31 +32,38 @@ namespace CartService.Services
 
             var productClient = _httpClientFactory.CreateClient("productservice");
             var inventoryClient = _httpClientFactory.CreateClient("inventoryservice");
-            // var discountClient = _httpClientFactory.CreateClient("discountservice"); // Tạm thời chưa dùng
+            var discountClient = _httpClientFactory.CreateClient("discountservice");
 
             foreach (var cartItem in userCartItems)
             {
-                // BƯỚC 2: Sử dụng DTO cục bộ (ProductVariationDTO) để hứng dữ liệu
-                ProductVariationDTO variationDetails = null;
+                ProductVariationDTO? variationDetails = null;
                 try
                 {
                     variationDetails = await productClient.GetFromJsonAsync<ProductVariationDTO>($"api/variations/{cartItem.VariationId}");
                 }
-                catch (HttpRequestException) { /* Bỏ qua nếu service lỗi */ }
+                catch (HttpRequestException) { }
 
                 if (variationDetails == null) continue;
 
-                // BƯỚC 3: Sử dụng DTO cục bộ (InventoryStockDTO) để hứng dữ liệu
                 int stockQuantity = 0;
                 try
                 {
-                    // API của InventoryService phải trả về JSON có trường stockQuantity
                     var stockDto = await inventoryClient.GetFromJsonAsync<InventoryDTO>($"api/stock/{cartItem.VariationId}");
                     stockQuantity = stockDto?.StockQuantity ?? 0;
                 }
-                catch (HttpRequestException) { /* Mặc định là 0 nếu service lỗi */ }
+                catch (HttpRequestException) { }
 
-                var variationDto = new VariationDTO // Đây là DTO để hiển thị trong giỏ hàng
+                SaleDTO? saleInfo = null;
+                try
+                {
+                    saleInfo = await discountClient.GetFromJsonAsync<SaleDTO>($"api/sales/product/{variationDetails.ProductId}");
+                }
+                catch (HttpRequestException)
+                {
+                    saleInfo = null;
+                }
+
+                var variationDto = new VariationDTO
                 {
                     Id = variationDetails.VariationId,
                     VariationPrice = variationDetails.VariationPrice ?? 0,
@@ -75,14 +75,13 @@ namespace CartService.Services
                 cartDtos.Add(new CartItemDTO
                 {
                     Variation = variationDto,
-                    ProductName = variationDetails.ProductName, // << BƯỚC 4: Lưu ProductName
+                    ProductName = variationDetails.ProductName,
                     Quantity = cartItem.CartQuantity ?? 0,
                     StockQuantity = stockQuantity,
-                    // Sale = ... // Logic lấy sale sẽ thêm sau
+                    Sale = saleInfo
                 });
             }
 
-            // BƯỚC 5: GroupBy theo ProductName đã được lưu trong CartItemDTO
             var groupedCart = cartDtos
                 .GroupBy(dto => dto.ProductName)
                 .Select(group => new GroupedCartDTO
@@ -97,15 +96,11 @@ namespace CartService.Services
 
         public async Task AddToCartAsync(Guid userId, int variationId, int quantity)
         {
-            // Đảm bảo tên client nhất quán ("inventoryservice" thay vì "InventoryClient")
             var inventoryClient = _httpClientFactory.CreateClient("inventoryservice");
             int stockQuantity = 0;
             try
             {
-                // Gọi API và hứng kết quả bằng DTO của mình
                 var stockDto = await inventoryClient.GetFromJsonAsync<InventoryDTO>($"api/stock/{variationId}");
-
-                // Lấy giá trị từ thuộc tính đã được đổi tên
                 stockQuantity = stockDto?.StockQuantity ?? 0;
             }
             catch (HttpRequestException)
@@ -135,7 +130,6 @@ namespace CartService.Services
             await _cartRepository.SaveAsync();
         }
 
-        // Các phương thức Remove không thay đổi
         public async Task RemoveFromCartAsync(Guid userId, int variationId)
         {
             var cartItem = await _cartRepository.FindAsync((userId, variationId));

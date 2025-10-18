@@ -13,5 +13,6 @@ namespace ProductService.Services.IServices
         Task<bool> DeleteProductAsync(Guid id);
         Task<ProductDetailDTO?> UpdateProductVariationsAsync(Guid productId, List<UpdateVariationDTO> updateVariationDtos);
         Task<bool> DeleteVariationAsync(int variationId);
+        Task<ProductForWishlistDTO?> GetProductInfoForWishlistAsync(Guid productId);
     }
 }

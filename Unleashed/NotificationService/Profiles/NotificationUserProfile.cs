@@ -3,7 +3,7 @@ using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.DTOs.NotificationUserDTOs;
 using NotificationService.Models;
 
-namespace NotificationService
+namespace NotificationService.Profiles
 {
     public class NotificationUserProfile : Profile
     {

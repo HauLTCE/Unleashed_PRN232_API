@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CartService.Dtos
+namespace CartService.DTOs.Cart
 {
     public class UpdateCartDTO
     {

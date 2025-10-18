@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
-using CartService.Dtos;
-using CartService.DTOs;
+using CartService.DTOs.Cart;
+using CartService.DTOs.Client;
 using CartService.Models;
 
 namespace CartService.Profiles
