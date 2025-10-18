@@ -28,10 +28,16 @@ builder.Services.AddHttpClient("productservice", client =>
     client.BaseAddress = new Uri("http://productservice");
 });
 
-builder.Services.AddHttpClient("discountservice", client =>
+builder.Services.AddHttpClient("orderservice", client =>
 {
-    client.BaseAddress = new Uri("http://discountservice");
+    client.BaseAddress = new Uri("http://orderservice");
 });
+
+builder.Services.AddHttpClient("orderservice", client =>
+{
+    client.BaseAddress = new Uri("http://inventoryservice");
+});
+
 
 builder.Services.AddAutoMapper(cfg =>
 {

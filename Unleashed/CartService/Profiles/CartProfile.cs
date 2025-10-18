@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using CartService.Dtos;
+using CartService.DTOs;
 using CartService.Models;
 
 namespace CartService.Profiles
@@ -10,10 +11,16 @@ namespace CartService.Profiles
             CreateMap<Cart, CartDTO>();
             CreateMap<CreateCartDTO, Cart>();
             CreateMap<UpdateCartDTO, Cart>();
+            CreateMap<CartItemDTO, Cart>();
+            CreateMap<GroupedCartDTO, Cart>();
+            CreateMap<VariationDTO, Cart>();
 
             CreateMap<CartDTO, Cart>();
             CreateMap<Cart, CreateCartDTO>();
-            CreateMap<Cart,  UpdateCartDTO>();  
+            CreateMap<Cart,  UpdateCartDTO>();
+            CreateMap<Cart, CartItemDTO>();
+            CreateMap<Cart, GroupedCartDTO>();
+            CreateMap<Cart, VariationDTO>();
         }
     }
 }
