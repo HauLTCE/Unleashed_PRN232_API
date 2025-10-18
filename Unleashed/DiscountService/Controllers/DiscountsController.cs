@@ -9,12 +9,12 @@ namespace DiscountService.Controllers
     [Route("api/[controller]")]
     public class DiscountController : ControllerBase
     {
-        private readonly IDiscountService _discountService;
+        //private readonly IDiscountService _discountService;
 
-        public DiscountController(IDiscountService discountService)
-        {
-            _discountService = discountService;
-        }
+        //public DiscountController(IDiscountService discountService)
+        //{
+        //    _discountService = discountService;
+        //}
 
         //// GET: api/discount
         //[HttpGet]

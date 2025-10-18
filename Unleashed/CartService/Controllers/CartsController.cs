@@ -1,15 +1,16 @@
-﻿using CartService.Dtos;
-using CartService.Models;
-using CartService.Services.Interfaces;
+﻿using CartService.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace CartService.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class CartController : ControllerBase  //AUTH?
+    [Route("api/cart")]
+    //[Authorize] // BƯỚC 1: Bắt buộc tất cả các request đến controller này phải được xác thực (đăng nhập)
+    public class CartController : ControllerBase
     {
         private readonly ICartService _cartService;
 
@@ -18,72 +19,108 @@ namespace CartService.Controllers
             _cartService = cartService;
         }
 
+        // BƯỚC 2: Tạo một phương thức private để lấy UserId từ token một cách an toàn
+        // Điều này đảm bảo người dùng chỉ có thể thao tác trên giỏ hàng của chính mình.
+        private Guid GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                // Ném lỗi nếu không tìm thấy hoặc không hợp lệ, [Authorize] sẽ trả về 401 Unauthorized
+                throw new UnauthorizedAccessException("User ID claim is missing or invalid in the token.");
+            }
+            return userId;
+        }
+
+        /// <summary>
+        /// Lấy giỏ hàng chi tiết của người dùng đang đăng nhập.
+        /// </summary>
         // GET: api/cart
         [HttpGet]
-        public async Task<IActionResult> GetCarts() //khong co cai cuc cut nay broooo
+        public async Task<IActionResult> GetUserCart()
         {
-            var carts = await _cartService.GetCartsAsync();
-            return Ok(carts);
+            try
+            {
+                var userId = GetCurrentUserId();
+                var cart = await _cartService.GetFormattedCartByUserIdAsync(userId);
+                return Ok(cart);
+            }
+            catch (Exception e)
+            {
+                // Trả về lỗi 400 Bad Request nếu có vấn đề xảy ra
+                return BadRequest($"Error fetching user cart: {e.Message}");
+            }
         }
 
-        // GET: api/cart/user/{userId}
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetCartsByUser(Guid userId)
+        /// <summary>
+        /// Thêm một sản phẩm vào giỏ hàng của người dùng đang đăng nhập.
+        /// </summary>
+        /// <param name="variationId">ID của biến thể sản phẩm.</param>
+        /// <param name="quantity">Số lượng cần thêm (gửi trong body của request).</param>
+        // POST: api/cart/{variationId}
+        [HttpPost("{variationId}")]
+        public async Task<IActionResult> AddToCart(int variationId, [FromBody] int quantity)
         {
-            var carts = await _cartService.GetCartsByUserIdAsync(userId);
-            return Ok(carts);
+            // Kiểm tra đầu vào cơ bản
+            if (quantity <= 0)
+            {
+                return BadRequest("Quantity must be greater than zero.");
+            }
+
+            try
+            {
+                var userId = GetCurrentUserId();
+                await _cartService.AddToCartAsync(userId, variationId, quantity);
+                return Ok("Successfully added item to the cart.");
+            }
+            catch (Exception e)
+            {
+                // Trả về thông báo lỗi cụ thể (ví dụ: lỗi hết hàng)
+                return BadRequest(e.Message);
+            }
         }
 
-        // GET: api/cart/{userId}/{variationId}
-        [HttpGet("{userId}/{variationId}")]
-        public async Task<IActionResult> GetCart(Guid userId, int variationId) //the fuck is this bro
+        /// <summary>
+        /// Xóa một sản phẩm khỏi giỏ hàng của người dùng đang đăng nhập.
+        /// </summary>
+        /// <param name="variationId">ID của biến thể sản phẩm cần xóa.</param>
+        // DELETE: api/cart/{variationId}
+        [HttpDelete("{variationId}")]
+        public async Task<IActionResult> RemoveFromCart(int variationId)
         {
-            var cart = await _cartService.GetCartAsync(userId, variationId);
-            if (cart == null)
+            try
             {
-                return NotFound();
+                var userId = GetCurrentUserId();
+                await _cartService.RemoveFromCartAsync(userId, variationId);
+                return Ok("Successfully removed item from cart.");
             }
-            return Ok(cart);
+            catch (KeyNotFoundException e)
+            {
+                return NotFound(e.Message); // Trả về 404 Not Found nếu không tìm thấy sản phẩm
+            }
+            catch (Exception e)
+            {
+                return BadRequest($"Error removing item from cart: {e.Message}");
+            }
         }
 
-        // POST: api/cart
-        [HttpPost]
-        public async Task<IActionResult> CreateOrUpdateCart([FromBody] CreateCartDTO createCartDTO)
+        /// <summary>
+        /// Xóa tất cả sản phẩm khỏi giỏ hàng của người dùng đang đăng nhập.
+        /// </summary>
+        // DELETE: api/cart/all
+        [HttpDelete("all")]
+        public async Task<IActionResult> RemoveAllFromCart()
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
+                var userId = GetCurrentUserId();
+                await _cartService.RemoveAllFromCartAsync(userId);
+                return Ok("Successfully removed all items from cart.");
             }
-            var cart = await _cartService.CreateOrUpdateCartAsync(createCartDTO);
-            return Ok(cart);
-        }
-
-        // PUT: api/cart/{userId}/{variationId}
-        [HttpPut("{userId}/{variationId}")]
-        public async Task<IActionResult> UpdateCart(Guid userId, int variationId, [FromBody] UpdateCartDTO updateCartDTO)
-        {
-            if (!ModelState.IsValid)
+            catch (Exception e)
             {
-                return BadRequest(ModelState);
+                return BadRequest($"Error removing all items from cart: {e.Message}");
             }
-            var updatedCart = await _cartService.UpdateCartAsync(userId, variationId, updateCartDTO);
-            if (updatedCart == null)
-            {
-                return NotFound();
-            }
-            return Ok(updatedCart);
-        }
-
-        // DELETE: api/cart/{userId}/{variationId}
-        [HttpDelete("{userId}/{variationId}")]
-        public async Task<IActionResult> DeleteCart(Guid userId, int variationId)
-        {
-            var deleted = await _cartService.DeleteCartAsync(userId, variationId);
-            if (!deleted)
-            {
-                return NotFound();
-            }
-            return NoContent();
         }
     }
 }
