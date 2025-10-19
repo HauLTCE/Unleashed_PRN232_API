@@ -32,27 +32,15 @@ namespace AuthService.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string? searchQuery = null)
         {
-            var query = _userService.GetAll();
+            // 1. All complex logic is now encapsulated in the service.
+            // 2. The controller just passes the parameters along.
+            var pagedResponse = await _userService.GetUsersPagedAsync(
+                pageNumber,
+                pageSize,
+                searchQuery
+            );
 
-            if (!string.IsNullOrWhiteSpace(searchQuery))
-            {
-                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
-                query = query.Where(u =>
-                    (u.UserFullname != null && u.UserFullname.ToLower().Contains(lowerCaseSearchTerm)) ||
-                    (u.UserUsername != null && u.UserUsername.ToLower().Contains(lowerCaseSearchTerm)) ||
-                    (u.UserEmail != null && u.UserEmail.ToLower().Contains(lowerCaseSearchTerm))
-                );
-            }
-
-            var totalRecords = await query.CountAsync();
-            
-            var items = await query
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var pagedResponse = new PagedResponse<UserDTO>(items, totalRecords, pageNumber, pageSize);
-
+            // 3. The controller simply returns the result.
             return Ok(pagedResponse);
         }
 

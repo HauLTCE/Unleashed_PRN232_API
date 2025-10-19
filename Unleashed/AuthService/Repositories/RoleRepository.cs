@@ -13,9 +13,9 @@ namespace AuthService.Repositories
         {
             _authDbContext = authDbContext;
         }
-        public IQueryable<Role> All()
+        public async Task<IEnumerable<Role>> All()
         {
-            return _authDbContext.Roles.AsQueryable(); 
+            return await _authDbContext.Roles.ToListAsync(); 
         }
 
         public async Task<bool> CreateAsync(Role entity)
@@ -49,6 +49,30 @@ namespace AuthService.Repositories
             return await _authDbContext.Roles.FirstOrDefaultAsync(x => x.RoleId == id);
         }
 
+        public async Task<(IEnumerable<Role> entities, int totalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchQuery)
+        {
+            IQueryable<Role> query = _authDbContext.Roles.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
+                query = query.Where(r =>
+                    (r.RoleName != null && r.RoleName.ToLower().Contains(lowerCaseSearchTerm)) 
+                );
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var pagedQuery = query
+                .OrderBy(r => r.RoleId)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize);
+
+            var items = pagedQuery.AsEnumerable();
+
+            return (items, totalRecords);
+        }
+
         public async Task<bool> IsAny(int id)
         {
             return await _authDbContext.Roles.AnyAsync(x => x.RoleId == id);
@@ -78,5 +102,7 @@ namespace AuthService.Repositories
                 return false;
             }
         }
+
+       
     }
 }
