@@ -1,10 +1,12 @@
-﻿using AuthService.DTOs.UserDTOs;
+﻿using AuthService.DTOs.PageResponse;
+using AuthService.DTOs.UserDTOs;
 using AuthService.Models;
 using AuthService.Repositories.IRepositories;
 using AuthService.Services.IServices;
 using AuthService.Utilities;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 
 namespace AuthService.Services
@@ -53,11 +55,38 @@ namespace AuthService.Services
         }
 
 
-        public IQueryable<UserDTO> GetAll()
+        public async Task<IEnumerable<UserDTO>> GetAll()
         {
-            var users = _userRepository.All();
+            var users = await _userRepository.All();
             // Map the list of User entities to a list of UserDTOs
-            return _mapper.ProjectTo<UserDTO>(users);
+            return _mapper.Map<IEnumerable<UserDTO>>(users);
+        }
+        public async Task<PagedResponse<UserDTO>> GetUsersPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? searchQuery)
+        {
+            // 1. Call the repository to get the raw data and total count.
+            //    Notice the repository method is now specific and accepts the parameters.
+            (var users, var totalRecords) = await _userRepository.GetPagedAsync(
+                pageNumber,
+                pageSize,
+                searchQuery
+            );
+
+            // 2. Perform business logic (mapping) in the service layer.
+            var userDtos = _mapper.Map<List<UserDTO>>(users);
+            // Or manually: var userDtos = users.Select(u => new UserDTO { ... }).ToList();
+
+            // 3. Create the final PagedResponse.
+            var pagedResponse = new PagedResponse<UserDTO>(
+                userDtos,
+                totalRecords,
+                pageNumber,
+                pageSize
+            );
+
+            return pagedResponse;
         }
 
         public async Task<UserDTO?> GetById(Guid id)
@@ -118,5 +147,6 @@ namespace AuthService.Services
             // If user is null, AutoMapper will correctly return null.
             return _mapper.Map<ImportServiceUserDTO>(user);
         }
+
     }
 }

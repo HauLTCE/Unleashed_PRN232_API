@@ -1,10 +1,15 @@
-﻿using AuthService.DTOs.UserDTOs;
+﻿using AuthService.DTOs.PageResponse;
+using AuthService.DTOs.UserDTOs;
 
 namespace AuthService.Services.IServices
 {
     public interface IUserService
     {
-        IQueryable<UserDTO> GetAll();
+        Task<IEnumerable<UserDTO>> GetAll();
+        Task<PagedResponse<UserDTO>> GetUsersPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? searchQuery);
         Task<UserDTO?> GetById(Guid id);
         Task<ImportServiceUserDTO?> GetByUsernameForImportService(string username);
         Task<UserDTO?> CreateUser(CreateUserDTO createUserDTO);

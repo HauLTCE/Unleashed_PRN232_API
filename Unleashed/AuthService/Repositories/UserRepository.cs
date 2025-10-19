@@ -11,11 +11,36 @@ namespace AuthService.Repositories
         public UserRepository(AuthDbContext authDbContext) {
             _authDbContext = authDbContext;
         }
-        public IQueryable<User> All()
-        {
-            return _authDbContext.Users.Include(u => u.Role).AsQueryable();
-        }
 
+        public async Task<(IEnumerable<User> entities, int totalCount)> GetPagedAsync(
+        int pageNumber, 
+        int pageSize, 
+        string? searchQuery)
+        {
+            IQueryable<User> query = _authDbContext.Users.Include(u => u.Role).AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
+                query = query.Where(u =>
+                    (u.UserFullname != null && u.UserFullname.ToLower().Contains(lowerCaseSearchTerm)) ||
+                    (u.UserUsername != null && u.UserUsername.ToLower().Contains(lowerCaseSearchTerm)) ||
+                    (u.UserEmail != null && u.UserEmail.ToLower().Contains(lowerCaseSearchTerm))
+                );
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var pagedQuery = query
+                .OrderBy(u => u.IsUserEnabled)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize);
+
+            var items = pagedQuery.AsEnumerable();
+
+            return (items, totalRecords);
+        }
+       
         public async Task<bool> CreateAsync(User entity)
         {
             try
@@ -92,6 +117,11 @@ namespace AuthService.Repositories
             {
                 return false;
             }
+        }
+
+        public async Task<IEnumerable<User>> All()
+        {
+          return await _authDbContext.Users.Include(u => u.Role).ToListAsync();
         }
     }
 }

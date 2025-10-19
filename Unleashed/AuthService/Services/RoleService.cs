@@ -20,7 +20,7 @@ namespace AuthService.Services
 
         public async Task<IEnumerable<RoleDTO>> GetAll()
         {
-            var roles = await _roleRepository.All().ToListAsync();
+            var roles = await _roleRepository.All();
             return _mapper.Map<IEnumerable<RoleDTO>>(roles);
         }
 
