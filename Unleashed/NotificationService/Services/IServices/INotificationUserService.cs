@@ -1,4 +1,6 @@
-﻿using NotificationService.DTOs.NotificationUserDTOs;
+﻿using Microsoft.Extensions.Configuration.UserSecrets;
+using NotificationService.DTOs.NotificationUserDTOs;
+using NotificationService.DTOs.PagedResponse;
 
 namespace NotificationService.Services.IServices
 {
@@ -6,8 +8,13 @@ namespace NotificationService.Services.IServices
     {
         Task<IEnumerable<NotificationUserDTO>> GetAll();
         Task<NotificationUserDTO?> GetById(int notificationId, Guid userId);
-        Task<NotificationUserDTO?> Create(CreateNotificationUserDTO createDto);
+        Task<IEnumerable<NotificationUserDTO>?> Create(CreateNotificationUserDTO createDto);
         Task<bool> Update(int notificationId, Guid userId, UpdateNotificationUserDTO updateDto);
         Task<bool> Delete(int notificationId, Guid userId);
+        Task<PagedResponse<NotificationUserDTO>> GetNotificationUserByUserIdPagedAsync(
+        Guid userId,
+        int pageNumber,
+        int pageSize,
+        string? searchQuery);
     }
 }

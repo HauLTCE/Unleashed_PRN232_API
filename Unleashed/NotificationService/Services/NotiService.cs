@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.DTOs.NotificationDTOs;
+using NotificationService.DTOs.PagedResponse;
 using NotificationService.Models;
 using NotificationService.Repositories.IRepositories;
 using NotificationService.Services.IServices;
@@ -20,7 +21,7 @@ namespace NotificationService.Services
 
         public async Task<IEnumerable<NotificationDTO>> GetAllNotifications()
         {
-            var notifications = await _notificationRepository.All().ToListAsync();
+            var notifications = await _notificationRepository.All();
             return _mapper.Map<IEnumerable<NotificationDTO>>(notifications);
         }
 
@@ -72,6 +73,31 @@ namespace NotificationService.Services
 
             _notificationRepository.Delete(notificationToDelete);
             return await _notificationRepository.SaveAsync();
+        }
+
+        public async Task<PagedResponse<NotificationDTO>> GetNotificationPagedAsync(int pageNumber, int pageSize, string? searchQuery)
+        {
+            // 1. Call the repository to get the raw data and total count.
+            //    Notice the repository method is now specific and accepts the parameters.
+            (var notis, var totalRecords) = await _notificationRepository.GetPagedAsync(
+                pageNumber,
+                pageSize,
+                searchQuery
+            );
+
+            // 2. Perform business logic (mapping) in the service layer.
+            var notiDtos = _mapper.Map<List<NotificationDTO>>(notis);
+            // Or manually: var userDtos = users.Select(u => new UserDTO { ... }).ToList();
+
+            // 3. Create the final PagedResponse.
+            var pagedResponse = new PagedResponse<NotificationDTO>(
+                notiDtos,
+                totalRecords,
+                pageNumber,
+                pageSize
+            );
+
+            return pagedResponse;
         }
     }
 }

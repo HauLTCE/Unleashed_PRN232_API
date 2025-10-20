@@ -42,15 +42,15 @@ namespace NotificationService.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(NotificationUserDTO), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<NotificationUserDTO>> PostNotificationUser(CreateNotificationUserDTO createDto)
+        public async Task<ActionResult<IEnumerable<NotificationUserDTO>>> PostNotificationUser(CreateNotificationUserDTO createDto)
         {
             var newRecord = await _service.Create(createDto);
-            if (newRecord == null || newRecord.NotificationId == null || newRecord.UserId == null)
+            if (newRecord == null || newRecord == null)
             {
                 return BadRequest("Failed to create the notification user record.");
             }
 
-            return CreatedAtAction(nameof(GetNotificationUser), new { notificationId = newRecord.NotificationId, userId = newRecord.UserId }, newRecord);
+            return CreatedAtAction(nameof(GetNotificationUser), new { Record = newRecord }, newRecord);
         }
 
         // PUT: api/NotificationUsers/5/guid

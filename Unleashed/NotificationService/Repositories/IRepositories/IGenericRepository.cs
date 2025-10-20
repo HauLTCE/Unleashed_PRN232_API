@@ -2,7 +2,11 @@
 {
     public interface IGenericRepository<Tid,T>
     {
-        IQueryable<T> All();
+        Task<IEnumerable<T>> All();
+        Task<(IEnumerable<T> entities, int totalCount)> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? searchQuery);
         Task<T?> FindAsync(Tid id);
         Task<bool> IsAny(Tid id);
         bool Update(T entity);
