@@ -14,9 +14,9 @@ namespace NotificationService.Repositories
             _context = context;
         }
 
-        public IQueryable<NotificationUser> All()
+        public async Task<IEnumerable<NotificationUser>> All()
         {
-            return _context.NotificationUsers.AsQueryable();
+            return await _context.NotificationUsers.ToListAsync();
         }
 
         public async Task<bool> CreateAsync(NotificationUser entity)
@@ -50,6 +50,60 @@ namespace NotificationService.Repositories
             var (notificationId, userId) = id;
             return await _context.NotificationUsers
                 .FirstOrDefaultAsync(nu => nu.NotificationId == notificationId && nu.UserId == userId);
+        }
+
+        public async Task<(IEnumerable<NotificationUser> entities, int totalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchQuery)
+        {
+            IQueryable<NotificationUser> query = _context.NotificationUsers
+                .Include(nu => nu.NotificationId)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
+                query = query.Where(n =>
+                    n.Notification.NotificationTitle != null && n.Notification.NotificationTitle.ToLower().Contains(lowerCaseSearchTerm));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var pagedQuery = query
+                .Where(u => u.IsNotificationDeleted.GetValueOrDefault(false))
+                .OrderByDescending(u => u.IsNotificationViewed)
+                .ThenByDescending(u => u.Notification.NotificationCreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize);
+
+            var items = pagedQuery.AsEnumerable();
+
+            return (items, totalRecords);
+        }
+
+        public async Task<(IEnumerable<NotificationUser>, int)> GetPagedByUserIdAsync(Guid userId, int pageNumber, int pageSize, string? searchQuery)
+        {
+            IQueryable<NotificationUser> query = _context.NotificationUsers
+                 .Include(nu => nu.NotificationId)
+                 .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
+                query = query.Where(n =>
+                    n.Notification.NotificationTitle != null && n.Notification.NotificationTitle.ToLower().Contains(lowerCaseSearchTerm));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var pagedQuery = query
+                .Where(u => u.IsNotificationDeleted.GetValueOrDefault(false))
+                .OrderByDescending(u => u.IsNotificationViewed)
+                .ThenByDescending(u => u.Notification.NotificationCreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize);
+
+            var items = pagedQuery.AsEnumerable();
+
+            return (items, totalRecords);
         }
 
         public async Task<bool> IsAny((int, Guid) id)

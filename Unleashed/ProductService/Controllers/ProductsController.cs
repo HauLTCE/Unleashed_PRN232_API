@@ -107,8 +107,7 @@ namespace ProductService.Controllers
                 return Ok(productInfo);
             }
             catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get product info for wishlist. ProductId={ProductId}", productId);
+            {      
                 return StatusCode(500, "Internal server error");
             }
         }

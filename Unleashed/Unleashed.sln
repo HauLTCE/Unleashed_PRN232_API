@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unleashed.AppHost", "Unleas
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unleashed.ServiceDefaults", "Unleashed.ServiceDefaults\Unleashed.ServiceDefaults.csproj", "{18552E21-4EF8-E820-C987-B04E16F38599}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImgBBUploadService", "ImgBBUploadService\ImgBBUploadService.csproj", "{6FE447EC-6326-9B3D-737A-0BF146852D28}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -73,6 +75,10 @@ Global
 		{18552E21-4EF8-E820-C987-B04E16F38599}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18552E21-4EF8-E820-C987-B04E16F38599}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18552E21-4EF8-E820-C987-B04E16F38599}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FE447EC-6326-9B3D-737A-0BF146852D28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FE447EC-6326-9B3D-737A-0BF146852D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FE447EC-6326-9B3D-737A-0BF146852D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FE447EC-6326-9B3D-737A-0BF146852D28}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -86,6 +92,7 @@ Global
 		{71D7D7FF-528C-4351-8263-5D1AEEB97FA1} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
 		{DE998C14-389C-4FF2-A806-A73F583D88FF} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
 		{E72C64ED-A2D4-484B-967B-E79E407471D1} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
+		{6FE447EC-6326-9B3D-737A-0BF146852D28} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2EE81F3E-0CC7-47BE-8124-92B0DEC5709D}

@@ -13,12 +13,7 @@ namespace NotificationService.Repositories
         {
             _context = context;
         }
-
-        public IQueryable<Notification> All()
-        {
-            return _context.Notifications.AsQueryable();
-        }
-
+       
         public async Task<Notification?> FindAsync(int id)
         {
             return await _context.Notifications.FindAsync(id);
@@ -81,6 +76,34 @@ namespace NotificationService.Repositories
             {
                 return false;
             }
+        }
+
+        public async Task<IEnumerable<Notification>> All()
+        {
+            return await _context.Notifications.ToListAsync();
+        }
+
+        public async Task<(IEnumerable<Notification> entities, int totalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchQuery)
+        {
+            IQueryable<Notification> query = _context.Notifications.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
+                query = query.Where(n =>
+                    n.NotificationTitle != null && n.NotificationTitle.ToLower().Contains(lowerCaseSearchTerm));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var pagedQuery = query
+                .OrderByDescending(u => u.NotificationCreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize);
+
+            var items = pagedQuery.AsEnumerable();
+
+            return (items, totalRecords);
         }
     }
 }
