@@ -13,10 +13,12 @@ namespace AuthService.Utilities
     public class JwtTokenGenerator : IJwtTokenGenerator
     {
         private readonly IConfiguration _configuration;
+        private readonly ILogger<JwtTokenGenerator> _logger;
 
-        public JwtTokenGenerator(IConfiguration configuration)
+        public JwtTokenGenerator(IConfiguration configuration, ILogger<JwtTokenGenerator> logger)
         {
             _configuration = configuration;
+            _logger = logger;
         }
 
         public string GenerateToken(User user)
@@ -58,6 +60,56 @@ namespace AuthService.Utilities
 
             // 7. Write the token to a string format
             return tokenHandler.WriteToken(token);
+        }
+
+        public string GenerateEmailToken(Guid userId, string userEmail)
+        {
+            var claims = new[]
+            {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()), 
+            new Claim(JwtRegisteredClaimNames.Email, userEmail)
+            };
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["EmailToken:Key"]));
+            var token = new JwtSecurityToken(
+                //issuer: _settings.Issuer,
+                audience: "ConfirmEmail",
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(24),
+                signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public ClaimsPrincipal? ValidateToken(string token)
+        {
+            try
+            {
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["EmailToken:Key"]));
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = key,
+
+                    ValidateIssuer = false,
+                    //ValidIssuer = _settings.Issuer,
+
+                    ValidateAudience = true,
+                    ValidAudience = "ConfirmEmail", 
+
+                    ValidateLifetime = true, 
+                    ClockSkew = TimeSpan.Zero 
+                };
+
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+                return principal;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex.ToString());   
+                return null;
+            }
         }
     }
 }

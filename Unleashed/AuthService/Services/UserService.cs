@@ -26,6 +26,9 @@ namespace AuthService.Services
 
         public async Task<UserDTO?> CreateUser(CreateUserDTO createUserDTO)
         {
+            if(await _userRepository.GetByUsername(createUserDTO.UserUsername) != null || 
+                await _userRepository.GetByEmail(createUserDTO.UserEmail) != null) 
+                return null;
 
             var user = _mapper.Map<User>(createUserDTO);
             user.UserId = Guid.NewGuid();

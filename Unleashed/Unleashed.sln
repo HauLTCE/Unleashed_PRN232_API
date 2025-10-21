@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unleashed.ServiceDefaults",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImgBBUploadService", "ImgBBUploadService\ImgBBUploadService.csproj", "{6FE447EC-6326-9B3D-737A-0BF146852D28}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmailService", "EmailService\EmailService.csproj", "{4CD30345-D9BB-AAF5-029A-3F2C5055EA0A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -79,6 +81,10 @@ Global
 		{6FE447EC-6326-9B3D-737A-0BF146852D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6FE447EC-6326-9B3D-737A-0BF146852D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6FE447EC-6326-9B3D-737A-0BF146852D28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4CD30345-D9BB-AAF5-029A-3F2C5055EA0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4CD30345-D9BB-AAF5-029A-3F2C5055EA0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4CD30345-D9BB-AAF5-029A-3F2C5055EA0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4CD30345-D9BB-AAF5-029A-3F2C5055EA0A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +99,7 @@ Global
 		{DE998C14-389C-4FF2-A806-A73F583D88FF} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
 		{E72C64ED-A2D4-484B-967B-E79E407471D1} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
 		{6FE447EC-6326-9B3D-737A-0BF146852D28} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
+		{4CD30345-D9BB-AAF5-029A-3F2C5055EA0A} = {40DDC9BF-5100-4ED9-8735-95F49510758A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2EE81F3E-0CC7-47BE-8124-92B0DEC5709D}

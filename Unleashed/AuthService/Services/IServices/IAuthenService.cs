@@ -52,5 +52,6 @@ namespace AuthService.Services.IServices
         /// <param name="changePasswordDto">The DTO containing the user's old and new passwords.</param>
         /// <returns>A boolean indicating if the password was successfully changed.</returns>
         Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDTO changePasswordDto);
+        Task<bool> ConfirmEmailAsync(Guid user);
     }
 }

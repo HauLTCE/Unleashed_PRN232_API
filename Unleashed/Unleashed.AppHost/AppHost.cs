@@ -20,6 +20,8 @@ var notificationService = builder.AddProject<Projects.NotificationService>("noti
 
 var imgBBUploadService = builder.AddProject<Projects.ImgBBUploadService>("imgBBUploadService");
 
+var emailService = builder.AddProject<Projects.EmailService>("emailservice");
+
 //===========================================================================================================================================
 
 //var authService = builder
@@ -82,9 +84,6 @@ discountService.WithReference(authService)
 reviewService.WithReference(authService)
              .WithReference(productService)
              .WithReference(orderService);
-
-//===========================================================================================================================================
-
 
 //===========================================================================================================================================
 
