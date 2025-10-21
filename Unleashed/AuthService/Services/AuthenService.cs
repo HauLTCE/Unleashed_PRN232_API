@@ -182,5 +182,15 @@ namespace AuthService.Services
 
             return true;
         }
+
+        public async Task<bool> ConfirmEmailAsync(Guid userID)
+        {
+           var user = await _userRepository.FindAsync(userID);
+            if (user == null) return false;
+                user.IsUserEnabled = true;
+                _userRepository.Update(user);
+                await _userRepository.SaveAsync();
+                return true;
+        }
     }
 }

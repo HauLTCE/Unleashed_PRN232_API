@@ -1,12 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using AuthService.DTOs.AuthenDTOs;
+﻿using AuthService.DTOs.AuthenDTOs;
 using AuthService.DTOs.UserDTOs;
+using AuthService.Models;
 using AuthService.Services.IServices;
-using System.Threading.Tasks;
+using AuthService.Utilities.IUtilities;
 using Microsoft.AspNetCore.Authorization; // Required for [Authorize]
-using System.Security.Claims; // Required for ClaimTypes
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging; // Required for StatusCodes
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Security.Claims; // Required for ClaimTypes
+using System.Text;
+using System.Threading.Tasks;
 
 namespace AuthService.Controllers
 {
@@ -15,11 +19,21 @@ namespace AuthService.Controllers
     public class AuthenController : ControllerBase
     {
         private readonly IAuthenService _authenService;
+        private readonly IUserService _userService;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly ILogger<AuthenController> _logger;
 
-        public AuthenController(IAuthenService authenService, ILogger<AuthenController> logger)
+        public AuthenController(IAuthenService authenService, 
+            IUserService userService,
+            IHttpClientFactory httpClientFactory,
+            IJwtTokenGenerator jwtTokenGenerator,
+            ILogger<AuthenController> logger)
         {
             _authenService = authenService;
+            _userService = userService;
+            _jwtTokenGenerator = jwtTokenGenerator;
+            _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
 
@@ -40,9 +54,90 @@ namespace AuthService.Controllers
                 return BadRequest("Registration failed. The username or email may already be in use.");
             }
 
+            try
+            {
+                var token = _jwtTokenGenerator.GenerateEmailToken(createdUser.UserId, createdUser.UserEmail);
+
+                var callbackUrl = Url.Action(
+                    action: nameof(ConfirmEmail),
+                    controller: "Authen",
+                    values: new { userId = createdUser.UserId, token = token },
+                    protocol: Request.Scheme);
+
+                if (callbackUrl == null)
+                {
+                    _logger.LogError("Could not create callback URL for user {Email}", createdUser.UserEmail);
+                }
+                else
+                {
+                    var emailRequest = new 
+                    {
+                        Email = createdUser.UserEmail,
+                        CallbackUrl = callbackUrl
+                    };
+                    // 1. Create the HttpClient
+                    var httpClient = _httpClientFactory.CreateClient("EmailService");
+
+                    // 2. Call the Email Service API
+                    //    Assuming the endpoint is '/api/email/send'
+                    var response = await httpClient.PostAsJsonAsync("/api/SendEmail/send-confirm-register", emailRequest);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogError("Failed to send confirmation email. EmailService responded with {StatusCode}", response.StatusCode);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling EmailService for user {Email}", createUserDto.UserEmail);
+                // Don't fail the registration, just log the error.
+            }
+
             return Ok(createdUser);
         }
 
+        [HttpGet("confirm-email")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        // We only need the token from the query string
+        public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return BadRequest(new { message = "Invalid confirmation link." });
+            }
+
+            // 1. Validate the JWT
+            var principal = _jwtTokenGenerator.ValidateToken(token);
+
+            if (principal == null)
+            {
+                _logger.LogWarning("Invalid email confirmation token received.");
+                return BadRequest(new { message = "Invalid or expired confirmation link." });
+            }
+
+            // 2. Get the UserId from the token's claims
+            var userIdString = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdString == null || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                _logger.LogError("Email token is valid but does not contain a valid UserId.");
+                return BadRequest(new { message = "Invalid token data." });
+            }
+
+            // 3. SECURELY validate and enable the user
+            // We pass the UserId we extracted from the token.
+            var result = await _authenService.ConfirmEmailAsync(userId);
+
+            if (result)
+            {
+                _logger.LogInformation("Email confirmed!");
+                return Ok(new { message = "Email confirmed successfully!" });
+            }
+
+            _logger.LogWarning("Email confirmation failed!");
+            return BadRequest(new { message = "Email confirmation failed." });
+        }
         /// <summary>
         /// Authenticates a user and returns a JWT.
         /// </summary>

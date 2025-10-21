@@ -27,6 +27,15 @@ builder.Services.AddCors(options =>
         });
 });
 
+builder.Services.AddHttpClient("EmailService", client =>
+{
+    string? emailApiUrl = builder.Configuration["ServiceUrls:EmailApiBase"];
+    if (!string.IsNullOrEmpty(emailApiUrl))
+    {
+        client.BaseAddress = new Uri(emailApiUrl);
+    }
+});
+
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
