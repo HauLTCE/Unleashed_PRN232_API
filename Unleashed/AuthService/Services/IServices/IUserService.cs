@@ -11,6 +11,7 @@ namespace AuthService.Services.IServices
         int pageSize,
         string? searchQuery);
         Task<UserDTO?> GetById(Guid id);
+        Task<UserDTO?> GetByEmail(string email);
         Task<ImportServiceUserDTO?> GetByUsernameForImportService(string username);
         Task<UserDTO?> CreateUser(CreateUserDTO createUserDTO);
         Task<UserDTO?> CreateUser(CreateExternalUserDTO createUserDTO);
