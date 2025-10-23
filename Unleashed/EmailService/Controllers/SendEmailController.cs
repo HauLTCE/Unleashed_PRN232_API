@@ -42,7 +42,7 @@ namespace EmailService.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> SendConfirmationEmail([FromBody] ConfirmRegister request)
+        public async Task<IActionResult> SendConfirmationEmail([FromBody] SendEmail request)
         {
             try
             {
@@ -79,6 +79,50 @@ namespace EmailService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while sending confirmation email to {Email}", request.Email);
+                return StatusCode(500, new { message = "An internal error occurred while trying to send the email." });
+            }
+        }
+
+        [HttpPost("send-reset-paswword")] // Matches the URL from your AuthenController
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SendResetPasswordEmail([FromBody] SendEmail request)
+        {
+            try
+            {
+                _logger.LogInformation("Attempting to send reset password email to {Email}", request.Email);
+
+                // 1. Construct the email body
+                var emailBody = $@"
+                <html>
+                <body style='font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6;'>
+                <h2>Password Reset Request</h2>
+                <p>We received a request to reset the password for your account. Please click the button below to set a new password.</p>
+                <a href='{request.CallbackUrl}' style='display: inline-block; padding: 12px 24px; font-size: 16px; color: #fff; background-color: #dc3545; text-decoration: none; border-radius: 5px;'>
+                Reset Your Password
+                </a>
+                <p>If you did not request a password reset, you can safely ignore this email.</p>
+                </body>
+                </html>";
+
+                // 2. Create the EmailMessage object
+                var emailMessage = new EmailMessage(
+                    toAddress: request.Email,
+                    subject: "Reset Your Password",
+                    body: emailBody
+                );
+
+                // 3. Call the service to send the email
+                await _emailService.SendEmailAsync(emailMessage);
+
+                _logger.LogInformation("Successfully sent reset password email to {Email}", request.Email);
+
+                return Ok(new { message = "Reset password email sent successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while sending reset password email to {Email}", request.Email);
                 return StatusCode(500, new { message = "An internal error occurred while trying to send the email." });
             }
         }

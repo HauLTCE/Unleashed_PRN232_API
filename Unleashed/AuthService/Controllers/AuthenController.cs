@@ -1,14 +1,10 @@
 ﻿using AuthService.DTOs.AuthenDTOs;
 using AuthService.DTOs.UserDTOs;
-using AuthService.Models;
 using AuthService.Services.IServices;
 using AuthService.Utilities.IUtilities;
-using Microsoft.AspNetCore.Authorization; // Required for [Authorize]
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization; 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Security.Claims; // Required for ClaimTypes
+using System.Security.Claims; 
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,23 +14,27 @@ namespace AuthService.Controllers
     [ApiController]
     public class AuthenController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
         private readonly IAuthenService _authenService;
         private readonly IUserService _userService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly ILogger<AuthenController> _logger;
 
-        public AuthenController(IAuthenService authenService, 
+        public AuthenController(
+            IAuthenService authenService, 
             IUserService userService,
             IHttpClientFactory httpClientFactory,
             IJwtTokenGenerator jwtTokenGenerator,
-            ILogger<AuthenController> logger)
+            ILogger<AuthenController> logger,
+            IConfiguration configuration)
         {
             _authenService = authenService;
             _userService = userService;
             _jwtTokenGenerator = jwtTokenGenerator;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -56,13 +56,9 @@ namespace AuthService.Controllers
 
             try
             {
-                var token = _jwtTokenGenerator.GenerateEmailToken(createdUser.UserId, createdUser.UserEmail);
+                var emailToken = _jwtTokenGenerator.GenerateEmailToken(createdUser.UserId, createdUser.UserEmail);
 
-                var callbackUrl = Url.Action(
-                    action: nameof(ConfirmEmail),
-                    controller: "Authen",
-                    values: new { userId = createdUser.UserId, token = token },
-                    protocol: Request.Scheme);
+                var callbackUrl = $"{_configuration["FrontEnd"]}/confirm-email?token={emailToken}&userId={createdUser.UserId}";
 
                 if (callbackUrl == null)
                 {
@@ -100,7 +96,6 @@ namespace AuthService.Controllers
         [HttpGet("confirm-email")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        // We only need the token from the query string
         public async Task<IActionResult> ConfirmEmail([FromQuery] string token)
         {
             if (string.IsNullOrEmpty(token))
@@ -172,7 +167,7 @@ namespace AuthService.Controllers
             return Ok(roleName);
         }
 
-        [HttpPost("google-login")]
+        [HttpPost("google-login")] //Not done
         [ProducesResponseType(typeof(LoginUserResponeDTO), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(500)]
@@ -198,20 +193,104 @@ namespace AuthService.Controllers
             }
         }
 
-        /* // NOTE: The corresponding service method 'ResetPasswordAsync' is commented out in AuthenService.
-       // Uncomment this endpoint once the service-level implementation is complete.
 
-       /// <summary>
-       /// Resets a user's password using a valid reset token.
-       /// </summary>
-       /// <param name="resetPasswordDto">The reset token and the new password.</param>
-       /// <returns>A success or failure message.</returns>
-       [HttpPost("reset-password")]
-       [ProducesResponseType(StatusCodes.Status200OK)]
-       [ProducesResponseType(StatusCodes.Status400BadRequest)]
-       public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO resetPasswordDto)
-       {
-           var result = await _authenService.ResetPasswordAsync(resetPasswordDto);
+        [HttpPost("reset-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> SendResetPasswordEmail([FromQuery] string email)
+        {
+            var result = await _userService.GetByEmail(email);
+
+            if (result == null)
+            {
+                return BadRequest(new { message = "Invalid or expired password reset token." });
+            }
+
+            try
+            {
+                var emailToken = _jwtTokenGenerator.GenerateEmailToken(result.UserId, result.UserEmail);
+
+                var callbackUrl = $"{_configuration["FrontEnd"]}/reset-password?token={emailToken}&userId={result.UserId}";
+
+                if (callbackUrl == null)
+                {
+                    _logger.LogError("Could not create callback URL for user {Email}", result.UserEmail);
+                }
+                else
+                {
+                    var emailRequest = new
+                    {
+                        Email = result.UserEmail,
+                        CallbackUrl = callbackUrl
+                    };
+                    // 1. Create the HttpClient
+                    var httpClient = _httpClientFactory.CreateClient("EmailService");
+
+                    // 2. Call the Email Service API
+                    //    Assuming the endpoint is '/api/email/send'
+                    var response = await httpClient.PostAsJsonAsync("/api/SendEmail/send-reset-paswword", emailRequest);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogError("Failed to send confirmation email. EmailService responded with {StatusCode}", response.StatusCode);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling EmailService for user {Email}", result.UserEmail);
+                // Don't fail the registration, just log the error.
+            }
+
+            return Ok(new { message = "Reset password email has been sent!" });
+        }
+
+        [HttpGet("reset-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult GetResetPassword([FromQuery] string token, [FromQuery] Guid userId)
+        {
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(userId.ToString()))
+            {
+                return BadRequest(new { message = "Token and User ID are required." });
+            }
+
+
+            var principal = _jwtTokenGenerator.ValidateToken(token);
+
+            if (principal == null)
+            {
+                _logger.LogWarning("Invalid email confirmation token received.");
+                return BadRequest(new { message = "Invalid or expired confirmation link." });
+            }
+
+            return Ok(new { message = "Token is valid." });
+        }
+
+        /// <summary>
+        /// Resets a user's password using a valid reset token.
+        /// </summary>
+        /// <param name="resetPasswordDto">The reset token and the new password.</param>
+        /// <returns>A success or failure message.</returns>
+        [HttpPut("reset-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO resetPasswordDto, [FromQuery] string token)
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return BadRequest(new { message = "Token and User ID are required." });
+            }
+
+            var principal = _jwtTokenGenerator.ValidateToken(token);
+
+            if (principal == null)
+            {
+                _logger.LogWarning("Invalid email confirmation token received.");
+                return BadRequest(new { message = "Invalid or expired confirmation link." });
+            }
+
+            var result = await _authenService.ResetPasswordAsync(resetPasswordDto);
 
            if (!result)
            {
@@ -219,8 +298,8 @@ namespace AuthService.Controllers
            }
 
            return Ok(new { message = "Password has been reset successfully." });
-       }
-       */
+        }
+
 
         /// <summary>
         /// Changes the password for the currently authenticated user.
@@ -228,7 +307,7 @@ namespace AuthService.Controllers
         /// <param name="changePasswordDto">An object containing the user's old and new passwords.</param>
         /// <returns>A success or failure message.</returns>
         [HttpPost("change-password")]
-        [Authorize] 
+        [Authorize(Roles = "STAFF, CUSTOMER")] 
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

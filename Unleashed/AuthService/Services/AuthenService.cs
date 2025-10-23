@@ -1,17 +1,15 @@
 ﻿using AuthService.DTOs.AuthenDTOs;
 using AuthService.DTOs.UserDTOs;
-using AuthService.Models;
 using AuthService.Repositories.IRepositories;
 using AuthService.Services.IServices;
-using AuthService.Utilities; // For HashingPassword
+using AuthService.Utilities;
 using AuthService.Utilities.IUtilities;
 using AutoMapper;
-using Google.Apis.Auth; // Required for Google login
+using Google.Apis.Auth; 
 using Microsoft.Extensions.Configuration; // Required for Google Client ID
-using Microsoft.SqlServer.Server;
 using System;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
+
 
 namespace AuthService.Services
 {
@@ -138,28 +136,23 @@ namespace AuthService.Services
             return true;
         }
 
-        //public async Task<bool> ResetPasswordAsync(ResetPasswordDTO resetPasswordDto)
-        //{
-        //    // Find user by the non-expired token
-        //    var user = await _userRepository.GetUserByResetTokenAsync(resetPasswordDto.Token);
+        public async Task<bool> ResetPasswordAsync(ResetPasswordDTO resetPasswordDto)
+        {
+            // Find user by the non-expired token
+            var user = await _userRepository.FindAsync(resetPasswordDto.UserId);
 
-        //    if (user == null || user.ResetTokenExpires < DateTime.UtcNow)
-        //    {
-        //        return false; // Token is invalid or has expired
-        //    }
+            if (user == null)
+            {
+                return false; 
+            }
 
-        //    // Hash the new password and update the user
-        //    user.UserPassword = HashingPassword.HashPassword(resetPasswordDto.NewPassword);
+            // Hash the new password and update the user
+            user.UserPassword = HashingPassword.HashPassword(resetPasswordDto.Password);
+            _userRepository.Update(user);
+            await _userRepository.SaveAsync();
 
-        //    // Invalidate the token after use
-        //    user.PasswordResetToken = null;
-        //    user.ResetTokenExpires = null;
-
-        //    _userRepository.Update(user);
-        //    await _userRepository.SaveAsync();
-
-        //    return true;
-        //}
+            return true;
+        }
 
         public async Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDTO changePasswordDto)
         {

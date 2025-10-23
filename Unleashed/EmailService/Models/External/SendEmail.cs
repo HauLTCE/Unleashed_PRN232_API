@@ -2,7 +2,7 @@
 
 namespace EmailService.Models.External
 {
-    public class ConfirmRegister
+    public class SendEmail
     {
         [Required]
         [EmailAddress]

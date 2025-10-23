@@ -95,8 +95,6 @@ namespace AuthService.Services
         public async Task<UserDTO?> GetById(Guid id)
         {
             var user = await _userRepository.FindAsync(id);
-            // Map the found User entity to a UserDTO.
-            // If user is null, AutoMapper will correctly return null.
             return _mapper.Map<UserDTO>(user);
         }
 
@@ -146,10 +144,13 @@ namespace AuthService.Services
         public async Task<ImportServiceUserDTO?> GetByUsernameForImportService(string username)
         {
             var user = await _userRepository.GetByUsername(username);
-            // Map the found User entity to a UserDTO.
-            // If user is null, AutoMapper will correctly return null.
             return _mapper.Map<ImportServiceUserDTO>(user);
         }
 
+        public async Task<UserDTO?> GetByEmail(string email)
+        {
+            var user = await _userRepository.GetByEmail(email);
+            return _mapper.Map<UserDTO>(user);
+        }
     }
 }

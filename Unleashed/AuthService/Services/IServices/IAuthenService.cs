@@ -53,5 +53,6 @@ namespace AuthService.Services.IServices
         /// <returns>A boolean indicating if the password was successfully changed.</returns>
         Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDTO changePasswordDto);
         Task<bool> ConfirmEmailAsync(Guid user);
+        Task<bool> ResetPasswordAsync(ResetPasswordDTO resetPasswordDto);
     }
 }
