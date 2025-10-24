@@ -120,26 +120,12 @@ public partial class ProductDbContext : DbContext
             entity.Property(e => e.SaleTypeId).HasColumnName("sale_type_id");
             entity.Property(e => e.SaleStatusId).HasColumnName("sale_status_id");
             entity.Property(e => e.SaleValue)
-                  .HasColumnName("sale_value")
-                  .HasPrecision(18, 2); // tuỳ DB
+                .HasColumnName("sale_value")
+                .HasPrecision(18, 2); // precision cho sale_value
             entity.Property(e => e.SaleStartDate).HasColumnName("sale_start_date");
             entity.Property(e => e.SaleEndDate).HasColumnName("sale_end_date");
             entity.Property(e => e.SaleCreatedAt).HasColumnName("sale_created_at");
             entity.Property(e => e.SaleUpdatedAt).HasColumnName("sale_updated_at");
-
-            // Nếu Sếp scaffold thêm hai bảng sale_status & sale_type (khuyến nghị),
-            // thêm quan hệ như dưới đây. Nếu CHƯA có model thì comment lại.
-            // entity.HasOne<SaleStatus>()
-            //       .WithMany()
-            //       .HasForeignKey(e => e.SaleStatusId)
-            //       .HasConstraintName("sale_sale_status_id_fkey")
-            //       .OnDelete(DeleteBehavior.Restrict);
-
-            // entity.HasOne<SaleType>()
-            //       .WithMany()
-            //       .HasForeignKey(e => e.SaleTypeId)
-            //       .HasConstraintName("sale_sale_type_id_fkey")
-            //       .OnDelete(DeleteBehavior.Restrict);
         });
 
         // =============== SALE_PRODUCT (Bridge) ===============
@@ -147,25 +133,27 @@ public partial class ProductDbContext : DbContext
         {
             entity.ToTable("sale_product");
 
-            // Bảng nối: dùng composite key (SaleId, ProductId)
+            // Bảng nối: sử dụng composite key (SaleId, ProductId)
             entity.HasKey(e => new { e.SaleId, e.ProductId })
-                  .HasName("sale_product_pkey");
+                .HasName("sale_product_pkey");
 
             entity.Property(e => e.SaleId).HasColumnName("sale_id");
             entity.Property(e => e.ProductId).HasColumnName("product_id");
 
+            // Các ràng buộc khóa ngoại cho Sale và Product
             entity.HasOne<Sale>()
-                  .WithMany()
-                  .HasForeignKey(e => e.SaleId)
-                  .HasConstraintName("sale_product_sale_id_fkey")
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(e => e.SaleId)
+                .HasConstraintName("sale_product_sale_id_fkey")
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne<Product>()
-                  .WithMany()
-                  .HasForeignKey(e => e.ProductId)
-                  .HasConstraintName("sale_product_product_id_fkey")
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(e => e.ProductId)
+                .HasConstraintName("sale_product_product_id_fkey")
+                .OnDelete(DeleteBehavior.Cascade);
         });
+
 
         // =============== STOCK_VARIATION ===============
         modelBuilder.Entity<StockVariation>(entity =>
