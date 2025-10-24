@@ -284,5 +284,9 @@ namespace ProductService.Services
             return dto;
         }
 
+        public async Task<PagedResult<ProductListDTO>> GetPagedForProductListAsync(PaginationParams pagination)
+        {
+            return await _productRepository.GetPagedForProductListAsync(pagination);
+        }
     }
 }

@@ -21,126 +21,97 @@ namespace ProductService.Repositories
 
         public async Task<PagedResult<ProductListDTO>> GetPagedForProductListAsync(PaginationParams pagination)
         {
-            var now = DateTimeOffset.UtcNow;
+            var query = _context.Products
+                .Include(p => p.Brand)
+                .Include(p => p.ProductStatus)
+                .Include(p => p.Variations)
+                    .ThenInclude(v => v.Color)
+                .Include(p => p.Variations)
+                    .ThenInclude(v => v.Size)
+                .Join(_context.ProductCategories,
+                    product => product.ProductId,
+                    productCategory => productCategory.ProductId,
+                    (product, productCategory) => new { product, productCategory })
+                .Join(_context.Categories,
+                    combined => combined.productCategory.CategoryId,
+                    category => category.CategoryId,
+                    (combined, category) => new { combined.product, category })
+                .Join(_context.SaleProducts,
+                    combined => combined.product.ProductId,
+                    saleProduct => saleProduct.ProductId,
+                    (combined, saleProduct) => new { combined.product, combined.category, saleProduct })
+                .Join(_context.Sales,
+                    combined => combined.saleProduct.SaleId,
+                    sale => sale.SaleId,
+                    (combined, sale) => new { combined.product, combined.category, sale, combined.saleProduct })
+                .Join(_context.Reviews,
+                    combined => combined.product.ProductId,
+                    review => review.ProductId,
+                    (combined, review) => new { combined.product, combined.category, combined.sale, combined.saleProduct, review })
+                .Join(_context.StockVariations,
+                    combined => combined.product.Variations.FirstOrDefault().VariationId, // Join theo VariationId
+                    stock => stock.VariationId,
+                    (combined, stock) => new { combined.product, combined.category, combined.sale, combined.saleProduct, combined.review, stock })
+                .AsQueryable();
 
-            // Base query + filter
-            var baseQuery = _context.Products.AsNoTracking();
-
-            if (!string.IsNullOrWhiteSpace(pagination.Search))
+            // Áp dụng search nếu có
+            if (!string.IsNullOrEmpty(pagination.Search))
             {
-                var search = pagination.Search.Trim();
-                baseQuery = baseQuery.Where(p =>
-                    (p.ProductName ?? "").Contains(search) ||
-                    (p.ProductCode ?? "").Contains(search));
+                query = query.Where(p => p.product.ProductName.Contains(pagination.Search));
             }
 
-            baseQuery = baseQuery.OrderByDescending(p => p.ProductCreatedAt);
+            // Lấy tổng số sản phẩm
+            var totalCount = await query.CountAsync();
 
-            // Project thẳng ra ProductListDTO
-            var projected = baseQuery.Select(p => new ProductListDTO
-            {
-                // Core
-                ProductId = p.ProductId,
-                ProductName = p.ProductName,
-                ProductCode = p.ProductCode,
-                ProductDescription = p.ProductDescription,
-
-                // Brand
-                BrandId = p.BrandId,
-                BrandName = _context.Brands
-                    .Where(b => b.BrandId == p.BrandId)
-                    .Select(b => b.BrandName)
-                    .FirstOrDefault(),
-
-                // Status
-                ProductStatusName = _context.ProductStatuses
-                    .Where(s => s.ProductStatusId == p.ProductStatusId)
-                    .Select(s => s.ProductStatusName)
-                    .FirstOrDefault(),
-
-                // Categories (giả định có ProductCategories & Categories)
-                CategoryList =
-                    (from pc in _context.ProductCategories
-                     join c in _context.Categories on pc.CategoryId equals c.CategoryId
-                     where pc.ProductId == p.ProductId
-                     orderby c.CategoryName
-                     select new CategoryDTO
-                     {
-                         CategoryId = c.CategoryId,
-                         CategoryName = c.CategoryName,
-                         // thêm field khác nếu DTO có
-                     }).ToList(),
-
-                // Variation hiển thị (lấy variation đầu tiên — Sếp có thể đổi sort rule)
-                VariationImage = _context.Variations
-                    .Where(v => v.ProductId == p.ProductId)
-                    .OrderBy(v => v.VariationId)
-                    .Select(v => v.VariationImage)           // đổi theo tên thật trong Model
-                    .FirstOrDefault(),
-
-                VariationPrice = _context.Variations
-                    .Where(v => v.ProductId == p.ProductId)
-                    .OrderBy(v => v.VariationId)
-                    .Select(v => (decimal?)v.VariationPrice)    // đổi theo tên thật trong Model
-                    .FirstOrDefault(),
-
-                // Giá gốc (nếu không có cột Price ở Product, lấy min giá biến thể)
-                ProductPrice = _context.Variations
-                    .Where(v => v.ProductId == p.ProductId)
-                    .Select(v => (decimal?)v.VariationPrice)    // đổi theo tên thật trong Model
-                    .Min(),
-
-                // CTKM đang hiệu lực (đưa vào SaleDTO)
-                Sale = (
-                    from sp in _context.SaleProducts
-                    join s in _context.Sales on sp.SaleId equals s.SaleId
-                    where sp.ProductId == p.ProductId
-                          && (s.SaleStartDate == null || s.SaleStartDate <= now)
-                          && (s.SaleEndDate == null || s.SaleEndDate >= now)
-                    orderby s.SaleValue descending, s.SaleStartDate descending
-                    select new SaleDTO
+            // Tính toán Tổng số đánh giá và Đánh giá trung bình cho mỗi sản phẩm
+            var items = await query
+                .GroupBy(p => p.product.ProductId)  // Group by ProductId để tính tổng và trung bình
+                .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+                .Take(pagination.PageSize)
+                .Select(p => new ProductListDTO
+                {
+                    ProductId = p.Key,
+                    ProductName = p.FirstOrDefault().product.ProductName,
+                    ProductCode = p.FirstOrDefault().product.ProductCode,
+                    ProductDescription = p.FirstOrDefault().product.ProductDescription,
+                    BrandId = p.FirstOrDefault().product.BrandId,
+                    BrandName = p.FirstOrDefault().product.Brand.BrandName,
+                    ProductStatusName = p.FirstOrDefault().product.ProductStatus.ProductStatusName,
+                    CategoryList = new List<CategoryDTO>
                     {
-                        SaleId = s.SaleId,
-                        SaleTypeId = s.SaleTypeId,
-                        SaleStatusId = s.SaleStatusId,
-                        SaleValue = s.SaleValue,
-                        SaleStartDate = s.SaleStartDate,
-                        SaleEndDate = s.SaleEndDate
-                    }
-                ).FirstOrDefault(),
+                new CategoryDTO
+                {
+                    CategoryId = p.FirstOrDefault().category.CategoryId,
+                    CategoryName = p.FirstOrDefault().category.CategoryName
+                }
+                    },
+                    VariationImage = p.FirstOrDefault().product.Variations.FirstOrDefault().VariationImage,
+                    VariationPrice = p.FirstOrDefault().product.Variations.FirstOrDefault().VariationPrice,
+                    ProductPrice = p.FirstOrDefault().product.Variations.FirstOrDefault().VariationPrice,
+                    Sale = p.FirstOrDefault().sale != null ? new SaleDTO
+                    {
+                        SaleId = p.FirstOrDefault().sale.SaleId,
+                        SaleTypeId = p.FirstOrDefault().sale.SaleTypeId,
+                        SaleStatusId = p.FirstOrDefault().sale.SaleStatusId,
+                        SaleValue = p.FirstOrDefault().sale.SaleValue,
+                        SaleStartDate = p.FirstOrDefault().sale.SaleStartDate,
+                        SaleEndDate = p.FirstOrDefault().sale.SaleEndDate
+                    } : null,
+                    SaleValue = p.FirstOrDefault().sale.SaleValue ?? 0,
+                    AverageRating = p.Average(r => r.review.ReviewRating) ?? 0,  // Tính trung bình đánh giá
+                    TotalRatings = p.Count(),  // Tính tổng số đánh giá
+                    Quantity = p.FirstOrDefault().stock != null ? p.FirstOrDefault().stock.StockQuantity ?? 0 : 0 // Tính tổng số lượng từ StockVariation
+                }).ToListAsync();
 
-                // Giá trị KM (flatten cho FE dễ dùng – tách riêng)
-                SaleValue = (
-                    from sp in _context.SaleProducts
-                    join s in _context.Sales on sp.SaleId equals s.SaleId
-                    where sp.ProductId == p.ProductId
-                          && (s.SaleStartDate == null || s.SaleStartDate <= now)
-                          && (s.SaleEndDate == null || s.SaleEndDate >= now)
-                    orderby s.SaleValue descending, s.SaleStartDate descending
-                    select s.SaleValue
-                ).FirstOrDefault(),
-
-                // Ratings
-                AverageRating = _context.Reviews
-                    .Where(r => r.ProductId == p.ProductId && r.ReviewRating != null)
-                    .Select(r => (double)r.ReviewRating!)
-                    .DefaultIfEmpty(0)
-                    .Average(),
-
-                TotalRatings = _context.Reviews
-                    .LongCount(r => r.ProductId == p.ProductId),
-
-                // Inventory (tổng tồn kho)
-                Quantity =
-                    (from v in _context.Variations
-                     join sv in _context.StockVariations on v.VariationId equals sv.VariationId
-                     where v.ProductId == p.ProductId
-                     select (int?)sv.StockQuantity).Sum() ?? 0
-            });
-
-            // Trả về PagedResult<ProductListDTO>
-            return await projected.ToPagedResultAsync(pagination.PageNumber, pagination.PageSize);
+            return new PagedResult<ProductListDTO>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pagination.PageNumber,
+                PageSize = pagination.PageSize
+            };
         }
+
         public async Task<PagedResult<Product>> GetPagedAsync(PaginationParams pagination)
         {
             var query = _context.Products

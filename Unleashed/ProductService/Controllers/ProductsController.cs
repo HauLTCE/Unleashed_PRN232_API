@@ -18,13 +18,30 @@ namespace ProductService.Controllers
         }
 
         // GET: api/Products
-        [HttpGet]
+/*        [HttpGet]
         public async Task<ActionResult<PagedResult<ProductDetailDTO>>> GetProducts([FromQuery] PaginationParams paginationParams)
         {
             var result = await _productService.GetPagedProductsAsync(paginationParams);
             return Ok(result);
         }
+*/
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<ProductListDTO>>> GetProducts([FromQuery] PaginationParams paginationParams)
+        {
+            try
+            {
+                // Gọi service để lấy danh sách sản phẩm phân trang
+                var result = await _productService.GetPagedForProductListAsync(paginationParams);
 
+                // Trả về kết quả với mã trạng thái OK và dữ liệu
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                // Nếu có lỗi xảy ra, trả về mã trạng thái 500 và thông báo lỗi
+                return StatusCode(500, "An error occurred while fetching the products");
+            }
+        }
         // GET: api/Products/5
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductDetailDTO>> GetProduct(Guid id)
