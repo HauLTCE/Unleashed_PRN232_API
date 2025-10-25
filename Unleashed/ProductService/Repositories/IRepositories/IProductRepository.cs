@@ -15,5 +15,13 @@ namespace ProductService.Repositories.IRepositories
         Task<PagedResult<ProductListDTO>> GetPagedForProductListAsync(PaginationParams pagination);
         Task<bool> DeleteByProductIdAsync(Guid productId);
         Task<Product?> GetByIdWithFirstVariationAsync(Guid productId);
+
+        // Thêm phương thức BeginTransactionAsync
+        Task BeginTransactionAsync();
+
+        // Thêm phương thức SaveChangesAsync
+        Task SaveChangesAsync();
+
+        Task<Product?> GetByProductNameAsync(string productName);
     }
 }
