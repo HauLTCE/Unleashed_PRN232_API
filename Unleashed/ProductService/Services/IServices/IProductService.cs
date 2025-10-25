@@ -11,7 +11,6 @@ namespace ProductService.Services.IServices
         Task<ProductDetailDTO> CreateProductAsync(CreateProductDTO createProductDto);
         Task<ProductDetailDTO?> UpdateProductAsync(Guid id, UpdateProductDTO updateProductDto);
         Task<bool> DeleteProductAsync(Guid id);
-        Task<ProductDetailDTO?> UpdateProductVariationsAsync(Guid productId, List<UpdateVariationDTO> updateVariationDtos);
         Task<bool> DeleteVariationAsync(int variationId);
         Task<ProductForWishlistDTO?> GetProductInfoForWishlistAsync(Guid productId);
         Task<PagedResult<ProductListDTO>> GetPagedForProductListAsync(PaginationParams pagination);

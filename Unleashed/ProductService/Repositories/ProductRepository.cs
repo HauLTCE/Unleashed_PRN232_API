@@ -99,7 +99,7 @@ namespace ProductService.Repositories
                     } : null,
                     SaleValue = p.FirstOrDefault().sale.SaleValue ?? 0,
                     AverageRating = p.Average(r => r.review.ReviewRating) ?? 0,  // Tính trung bình đánh giá
-                    TotalRatings = p.Count(),  // Tính tổng số đánh giá
+                    TotalRatings = p.Count(r => r.review.ReviewRating.HasValue),  // Tính tổng số người đánh giá (dựa trên ReviewRating)
                     Quantity = p.FirstOrDefault().stock != null ? p.FirstOrDefault().stock.StockQuantity ?? 0 : 0 // Tính tổng số lượng từ StockVariation
                 }).ToListAsync();
 
@@ -188,6 +188,21 @@ namespace ProductService.Repositories
                 .Include(p => p.Variations.OrderBy(v => v.VariationId))
                 .FirstOrDefaultAsync(p => p.ProductId == productId);
         }
+        // Phương thức bắt đầu giao dịch
+        public async Task BeginTransactionAsync()
+        {
+            await _context.Database.BeginTransactionAsync();
+        }
 
+        // Phương thức lưu các thay đổi trong giao dịch
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync();
+        }
+        public async Task<Product?> GetByProductNameAsync(string productName)
+        {
+            return await _context.Products
+                                 .FirstOrDefaultAsync(p => p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
+        }
     }
 }

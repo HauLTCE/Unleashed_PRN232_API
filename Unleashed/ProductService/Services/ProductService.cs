@@ -91,32 +91,41 @@ namespace ProductService.Services
                         throw new ArgumentException($"Category with ID {cid} does not exist");
             }
 
-            // 1) Tạo product (giống code cũ)
+            // 1) Kiểm tra xem sản phẩm đã tồn tại với tên tương tự chưa
+            var existingProduct = await _productRepository.GetByProductNameAsync(dto.ProductName);
+            if (existingProduct != null)
+            {
+                throw new ArgumentException($"Product with name {dto.ProductName} already exists.");
+            }
+
+            // 2) Tạo product entity
             var product = _mapper.Map<Product>(dto);
             product.ProductId = Guid.NewGuid();
             product.ProductCreatedAt = DateTimeOffset.UtcNow;
             product.ProductUpdatedAt = DateTimeOffset.UtcNow;
 
-            await _productRepository.CreateAsync(product);
-
-            var productId = product.ProductId;
-            var addedVariationCount = 0;
-            var categoriesAdded = dto.CategoryIds?.Any() == true;
+            // 3) Bắt đầu giao dịch thủ công
+            await _productRepository.BeginTransactionAsync();
 
             try
             {
-                // 2) Gán categories qua Raw SQL (Repo)
+                // 4) Tạo sản phẩm vào cơ sở dữ liệu
+                await _productRepository.CreateAsync(product);
+
+                var productId = product.ProductId;
+
+                // 5) Thêm categories cho sản phẩm
                 if (dto.CategoryIds?.Any() == true)
                 {
                     await _productCategoryRepository.AddCategoriesToProductAsync(productId, dto.CategoryIds);
                 }
 
-                // 3) Thêm variations — kiểm tra Size/Color như code cũ
+                // 6) Thêm variations cho sản phẩm
                 if (dto.Variations?.Any() == true)
                 {
                     foreach (var vdto in dto.Variations)
                     {
-                        // check tồn tại (giống code cũ)
+                        // Kiểm tra tồn tại của Size và Color
                         if (!vdto.SizeId.HasValue || !vdto.ColorId.HasValue) continue;
 
                         var size = await _sizeRepository.GetByIdAsync(vdto.SizeId.Value);
@@ -124,114 +133,115 @@ namespace ProductService.Services
                         if (size == null || color == null) continue;
 
                         var variation = _mapper.Map<Variation>(vdto);
-                        variation.ProductId = productId; // ràng buộc về product vừa tạo
+                        variation.ProductId = productId; // gắn ProductId vào Variation
 
                         await _variationRepository.CreateAsync(variation);
-                        addedVariationCount++;
                     }
                 }
 
-                // 4) Trả về DTO đầy đủ
+                // 7) Lưu tất cả thay đổi vào cơ sở dữ liệu trong giao dịch
+                await _productRepository.SaveChangesAsync();  // Lưu tất cả thay đổi
+
+                // 8) Trả về DTO sản phẩm đã tạo
                 return await GetProductByIdAsync(productId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CreateProduct failed, running compensation. ProductId={ProductId}", productId);
-
-                // —— BÙ TRỪ (Compensation) —— //
-                try
-                {
-                    // Xoá variations đã thêm
-                    await _variationRepository.DeleteByProductIdAsync(productId);
-
-                    // Xoá categories liên kết (Raw SQL)
-                    await _productCategoryRepository.RemoveAllByProductAsync(productId);
-
-                    // Xoá product
-                    await _productRepository.DeleteAsync(productId);
-                }
-                catch (Exception cleanupEx)
-                {
-                    _logger.LogError(cleanupEx, "Compensation failed. ProductId={ProductId}", productId);
-                }
-
-                throw; // cho controller xử lý trả lỗi 4xx/5xx
+                // Nếu có lỗi, hủy bỏ giao dịch
+                await _productRepository.SaveChangesAsync(); // Hủy bỏ giao dịch
+                _logger.LogError(ex, "CreateProduct failed, rolling back. ProductId={ProductId}", product.ProductId);
+                throw;
             }
         }
+
+
         public async Task<ProductDetailDTO?> UpdateProductAsync(Guid id, UpdateProductDTO dto)
         {
             var product = await _productRepository.GetByIdAsync(id);
             if (product == null) return null;
 
-            // 1) UPDATE thuộc tính sản phẩm 
-            _mapper.Map(dto, product);
-            product.ProductUpdatedAt = DateTimeOffset.UtcNow;
-
-            await _productRepository.UpdateAsync(product);
-
-            // 2) UPDATE Categories 
-            if (dto.CategoryIds != null)
+            // Kiểm tra tên sản phẩm có trùng với sản phẩm khác không (ngoại trừ sản phẩm hiện tại)
+            var existingProduct = await _productRepository.GetByProductNameAsync(dto.ProductName);
+            if (existingProduct != null && existingProduct.ProductId != id)
             {
-                var incoming = dto.CategoryIds.Distinct().ToList();
-                var current = (await _productCategoryRepository.GetCategoriesByProductIdAsync(id))
-                                .Select(c => c.CategoryId).ToList();
-
-                var toRemove = current.Except(incoming).ToList();
-                var toAdd = incoming.Except(current).ToList();
-
-                if (toRemove.Any())
-                    await _productCategoryRepository.RemoveCategoriesFromProductAsync(id, toRemove);
-                if (toAdd.Any())
-                    await _productCategoryRepository.AddCategoriesToProductAsync(id, toAdd);
+                throw new ArgumentException($"Product with name {dto.ProductName} already exists.");
             }
 
-            // 3) UPSERT Variations 
+            // 1) Cập nhật các thuộc tính scalar (ví dụ: tên sản phẩm, mã sản phẩm, mô tả, v.v.)
+            _mapper.Map(dto, product);
+            product.ProductUpdatedAt = DateTimeOffset.UtcNow; // Cập nhật thời gian sửa đổi
+
+            // 2) Cập nhật danh mục cho sản phẩm
+            if (dto.CategoryIds != null)
+            {
+                var incomingCategories = dto.CategoryIds.Distinct().ToList();
+                var currentCategories = (await _productCategoryRepository.GetCategoriesByProductIdAsync(id))
+                                        .Select(c => c.CategoryId).ToList();
+
+                // Các category cần xóa (không còn trong danh sách cập nhật)
+                var categoriesToRemove = currentCategories.Except(incomingCategories).ToList();
+                // Các category cần thêm (có trong danh sách cập nhật mà không có trong hiện tại)
+                var categoriesToAdd = incomingCategories.Except(currentCategories).ToList();
+
+                if (categoriesToRemove.Any())
+                    await _productCategoryRepository.RemoveCategoriesFromProductAsync(id, categoriesToRemove);
+                if (categoriesToAdd.Any())
+                    await _productCategoryRepository.AddCategoriesToProductAsync(id, categoriesToAdd);
+            }
+
+            // 3) Cập nhật hoặc thêm mới variations
             if (dto.Variations != null)
             {
-                var existing = await _variationRepository.GetByProductIdAsync(id);
-                var byId = existing.ToDictionary(v => v.VariationId);
-                var keepIds = new HashSet<int>();
+                var existingVariations = await _variationRepository.GetByProductIdAsync(id);
+                var variationsById = existingVariations.ToDictionary(v => v.VariationId);
+                var variationsToKeep = new HashSet<int>();
 
-                foreach (var vdto in dto.Variations)
+                foreach (var variationDto in dto.Variations)
                 {
-                    // Validate nếu có gửi
-                    if (vdto.SizeId.HasValue && await _sizeRepository.GetByIdAsync(vdto.SizeId.Value) is null)
-                        throw new ArgumentException($"Invalid SizeId={vdto.SizeId.Value}");
-                    if (vdto.ColorId.HasValue && await _colorRepository.GetByIdAsync(vdto.ColorId.Value) is null)
-                        throw new ArgumentException($"Invalid ColorId={vdto.ColorId.Value}");
+                    // Kiểm tra xem Size và Color có hợp lệ không
+                    if (variationDto.SizeId.HasValue && await _sizeRepository.GetByIdAsync(variationDto.SizeId.Value) == null)
+                        throw new ArgumentException($"Invalid SizeId={variationDto.SizeId.Value}");
+                    if (variationDto.ColorId.HasValue && await _colorRepository.GetByIdAsync(variationDto.ColorId.Value) == null)
+                        throw new ArgumentException($"Invalid ColorId={variationDto.ColorId.Value}");
 
-                    if (vdto.VariationId > 0 && byId.TryGetValue(vdto.VariationId, out var entity))
+                    if (variationDto.VariationId > 0 && variationsById.TryGetValue(variationDto.VariationId, out var existingVariation))
                     {
-                        // Map bỏ qua null cho entity Variation
-                        _mapper.Map(vdto, entity);
-                        await _variationRepository.UpdateAsync(entity);
-                        keepIds.Add(entity.VariationId);
+                        // Cập nhật các variation đã tồn tại
+                        _mapper.Map(variationDto, existingVariation);
+                        await _variationRepository.UpdateAsync(existingVariation);
+                        variationsToKeep.Add(existingVariation.VariationId);
                     }
                     else
                     {
-                        // CREATE cần đủ Size/Color/Price
-                        if (!vdto.SizeId.HasValue || !vdto.ColorId.HasValue || !vdto.VariationPrice.HasValue)
-                            throw new ArgumentException("New variation requires SizeId, ColorId and VariationPrice");
+                        // Thêm mới variation nếu không có
+                        if (!variationDto.SizeId.HasValue || !variationDto.ColorId.HasValue || !variationDto.VariationPrice.HasValue)
+                            throw new ArgumentException("New variation requires SizeId, ColorId, and VariationPrice");
 
-                        var newVar = _mapper.Map<Variation>(vdto);
-                        newVar.ProductId = id;
+                        var newVariation = _mapper.Map<Variation>(variationDto);
+                        newVariation.ProductId = id; // Gán ProductId vào Variation mới
 
-                        var created = await _variationRepository.CreateAsync(newVar);
-                        keepIds.Add(created.VariationId);
+                        var createdVariation = await _variationRepository.CreateAsync(newVariation);
+                        variationsToKeep.Add(createdVariation.VariationId);
                     }
                 }
 
-                // DELETE phần còn lại
-                var toDelete = existing.Where(x => !keepIds.Contains(x.VariationId))
-                                       .Select(x => x.VariationId)
-                                       .ToList();
-                foreach (var vid in toDelete)
-                    await _variationRepository.DeleteAsync(vid);
+                // Xóa các variations không còn trong danh sách (các variation không được giữ lại)
+                var variationsToDelete = existingVariations.Where(v => !variationsToKeep.Contains(v.VariationId))
+                                                           .Select(v => v.VariationId)
+                                                           .ToList();
+                foreach (var variationId in variationsToDelete)
+                {
+                    await _variationRepository.DeleteAsync(variationId);
+                }
             }
 
-            // 4) Return DTO đầy đủ
+            // 4) Lưu thay đổi vào cơ sở dữ liệu
+            await _productRepository.SaveChangesAsync(); // Lưu tất cả thay đổi trong giao dịch
+
+            // 5) Trả về DTO đầy đủ của sản phẩm sau khi cập nhật
             return await GetProductByIdAsync(id);
         }
+
 
         public async Task<bool> DeleteVariationAsync(int variationId)
 {
@@ -262,12 +272,6 @@ namespace ProductService.Services
                 throw; // controller sẽ trả 500
             }
         }
-
-        public Task<ProductDetailDTO?> UpdateProductVariationsAsync(Guid productId, List<UpdateVariationDTO> updateVariationDtos)
-        {
-            throw new NotImplementedException();
-        }
-
 
         public async Task<ProductForWishlistDTO?> GetProductInfoForWishlistAsync(Guid productId)
         {
