@@ -2,6 +2,7 @@
 using NotificationService.Data; // Assuming your DbContext is in a 'Data' folder
 using NotificationService.Models;
 using NotificationService.Repositories.IRepositories;
+using System.Threading;
 
 namespace NotificationService.Repositories
 {
@@ -97,7 +98,37 @@ namespace NotificationService.Repositories
             var totalRecords = await query.CountAsync();
 
             var pagedQuery = query
-                .OrderByDescending(u => u.NotificationCreatedAt)
+                .OrderByDescending(u => u.IsNotificationDraft)
+                .ThenByDescending(u => u.NotificationCreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize);
+
+            var items = pagedQuery.AsEnumerable();
+
+            return (items, totalRecords);
+        }
+
+        public async Task<(IEnumerable<Notification> entities, int totalCount)> GetPagedAsync(int pageNumber, int pageSize, string? searchQuery, bool? isDraft)
+        {
+            IQueryable<Notification> query = _context.Notifications.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                var lowerCaseSearchTerm = searchQuery.Trim().ToLower();
+                query = query.Where(n =>
+                    n.NotificationTitle != null && n.NotificationTitle.ToLower().Contains(lowerCaseSearchTerm));
+            }
+
+            if (isDraft.HasValue)
+            {
+                // Assuming the model property is IsNotificationRead (bool)
+                query = query.Where(n => n.IsNotificationDraft == isDraft.Value);
+            }
+            var totalRecords = await query.CountAsync();
+
+            var pagedQuery = query
+                .OrderByDescending(u => u.IsNotificationDraft)
+                .ThenByDescending(u => u.NotificationCreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize);
 

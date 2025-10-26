@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.Services.IServices;
+// Import PagedResponse DTO
+using NotificationService.DTOs.PagedResponse;
 
 namespace NotificationService.Controllers
 {
@@ -16,12 +18,23 @@ namespace NotificationService.Controllers
         }
 
         // GET: api/Notifications
+        // This endpoint is now updated to support pagination and filtering
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<NotificationDTO>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<NotificationDTO>>> GetNotifications()
+        [ProducesResponseType(typeof(PagedResponse<NotificationDTO>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResponse<NotificationDTO>>> GetNotifications(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchQuery = null,
+            [FromQuery] bool? isDraft = null)
         {
-            var notifications = await _notificationService.GetAllNotifications();
-            return Ok(notifications);
+            // Call the paged service method
+            var pagedResponse = await _notificationService.GetNotificationPagedAsync(
+                pageNumber,
+                pageSize,
+                searchQuery,
+                isDraft);
+
+            return Ok(pagedResponse);
         }
 
         // GET: api/Notifications/5
