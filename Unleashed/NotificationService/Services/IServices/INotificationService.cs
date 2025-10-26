@@ -13,6 +13,7 @@ namespace NotificationService.Services.IServices
         Task<PagedResponse<NotificationDTO>> GetNotificationPagedAsync(
         int pageNumber,
         int pageSize,
-        string? searchQuery);
+        string? searchQuery,
+        bool? isDraft);
     }
 }

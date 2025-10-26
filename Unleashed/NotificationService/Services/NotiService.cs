@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.DTOs.PagedResponse;
@@ -19,18 +20,19 @@ namespace NotificationService.Services
             _mapper = mapper;
         }
 
+        [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<IEnumerable<NotificationDTO>> GetAllNotifications()
         {
             var notifications = await _notificationRepository.All();
             return _mapper.Map<IEnumerable<NotificationDTO>>(notifications);
         }
-
+        [Authorize]
         public async Task<NotificationDTO?> GetNotificationById(int id)
         {
             var notification = await _notificationRepository.FindAsync(id);
             return _mapper.Map<NotificationDTO>(notification);
         }
-
+        [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<NotificationDTO?> CreateNotification(CreateNotificationDTO createDto)
         {
             var notification = _mapper.Map<Notification>(createDto);
@@ -48,6 +50,7 @@ namespace NotificationService.Services
             return null; // Failed to save
         }
 
+        [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<bool> UpdateNotification(int id, UpdateNotificationDTO updateDto)
         {
             var existingNotification = await _notificationRepository.FindAsync(id);
@@ -63,6 +66,7 @@ namespace NotificationService.Services
             return await _notificationRepository.SaveAsync();
         }
 
+        [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<bool> DeleteNotification(int id)
         {
             var notificationToDelete = await _notificationRepository.FindAsync(id);
@@ -70,19 +74,20 @@ namespace NotificationService.Services
             {
                 return false; // Not found
             }
-
             _notificationRepository.Delete(notificationToDelete);
             return await _notificationRepository.SaveAsync();
         }
 
-        public async Task<PagedResponse<NotificationDTO>> GetNotificationPagedAsync(int pageNumber, int pageSize, string? searchQuery)
+        [Authorize(Roles = "ADMIN, STAFF")]
+        public async Task<PagedResponse<NotificationDTO>> GetNotificationPagedAsync(int pageNumber, int pageSize, string? searchQuery, bool? isDraft)
         {
             // 1. Call the repository to get the raw data and total count.
             //    Notice the repository method is now specific and accepts the parameters.
             (var notis, var totalRecords) = await _notificationRepository.GetPagedAsync(
                 pageNumber,
                 pageSize,
-                searchQuery
+                searchQuery,
+                isDraft
             );
 
             // 2. Perform business logic (mapping) in the service layer.
