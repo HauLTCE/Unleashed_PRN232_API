@@ -24,6 +24,19 @@ namespace NotificationService.Controllers
             return Ok(result);
         }
 
+        // GET: api/NotificationUsers/userId
+        [HttpGet("{userId}")]
+        [ProducesResponseType(typeof(IEnumerable<NotificationUserDTO>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<NotificationUserDTO>>> GetNotificationUsersByUserId(
+            Guid userId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchQuery = null)
+        {
+            var result = await _service.GetNotificationUserByUserIdPagedAsync(userId,pageNumber,pageSize,searchQuery);
+            return Ok(result);
+        }
+
         // GET: api/NotificationUsers/5/guid
         [HttpGet("{notificationId}/{userId}")]
         [ProducesResponseType(typeof(NotificationUserDTO), StatusCodes.Status200OK)]
