@@ -1,7 +1,7 @@
-﻿using InventoryService.Clients.Interfaces;
-using InventoryService.DTOs.External;
+﻿using ReviewService.Clients.Interfaces;
+using ReviewService.DTOs.External;
 
-namespace InventoryService.Clients
+namespace ReviewService.Clients
 {
     public class AuthServiceClient : IAuthServiceClient
     {
@@ -12,31 +12,6 @@ namespace InventoryService.Clients
         {
             _httpClient = httpClient;
             _logger = logger;
-        }
-
-        public async Task<UserDto?> GetUserByUsernameAsync(string username)
-        {
-            if (string.IsNullOrWhiteSpace(username))
-            {
-                return null;
-            }
-
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<UserDto>($"api/users/by-username/{username}");
-            }
-            catch (HttpRequestException ex)
-            {
-                if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    _logger.LogWarning("User with username '{Username}' not found in AuthService.", username);
-                }
-                else
-                {
-                    _logger.LogError(ex, "HTTP request failed while fetching user '{Username}'.", username);
-                }
-                return null;
-            }
         }
 
         public async Task<IEnumerable<UserDto>> GetUsersByIdsAsync(IEnumerable<Guid> userIds)

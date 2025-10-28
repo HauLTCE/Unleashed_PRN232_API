@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using ReviewService.Clients.Interfaces;
 using ReviewService.DTOs.External;
 using ReviewService.DTOs.Internal;
 using ReviewService.DTOs.Review;
@@ -9,7 +10,7 @@ using ReviewService.Models;
 using ReviewService.Repositories.Interfaces;
 using ReviewService.Services.Interfaces;
 using System.Net.Http.Json;
-using System.Text.Json;
+using System.Security.Claims;
 
 namespace ReviewService.Services
 {
@@ -19,17 +20,23 @@ namespace ReviewService.Services
         private readonly ICommentRepository _commentRepository;
         private readonly IMapper _mapper;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IAuthServiceClient _authServiceClient;
+        private readonly ILogger<ReviewServicee> _logger;
 
         public ReviewServicee(
             IReviewRepository reviewRepository,
             ICommentRepository commentRepository,
             IMapper mapper,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IAuthServiceClient authServiceClient,
+            ILogger<ReviewServicee> logger)
         {
             _reviewRepository = reviewRepository;
             _commentRepository = commentRepository;
             _mapper = mapper;
             _httpClientFactory = httpClientFactory;
+            _authServiceClient = authServiceClient;
+            _logger = logger;
         }
 
         public async Task<ReviewDto> CreateReviewAsync(CreateReviewDto reviewDto, Guid currentUserId)
@@ -49,11 +56,11 @@ namespace ReviewService.Services
             OrderDto? order;
             try
             {
-                order = await orderClient.GetFromJsonAsync<OrderDto>($"api/orders/{reviewDto.OrderId}");
+                order = await orderClient.GetFromJsonAsync<OrderDto>($"api/order/{reviewDto.OrderId}");
             }
             catch (HttpRequestException)
             {
-                throw new NotFoundException("Order not found.");
+                throw new NotFoundException("Order not found or OrderService is unavailable.");
             }
 
             if (order == null) throw new NotFoundException("Order not found.");
@@ -87,26 +94,27 @@ namespace ReviewService.Services
                 return new PagedResult<ProductReviewDto>(new List<ProductReviewDto>(), 0);
             }
 
-            var userIds = pagedReviews.Items.Select(r => r.UserId).Where(id => id.HasValue).Select(id => id.Value).Distinct().ToList();
-            var userClient = _httpClientFactory.CreateClient("authservice");
-            var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var userIds = pagedReviews.Items.Select(r => r.UserId).Where(id => id.HasValue).Select(id => id.Value).Distinct();
 
-            var userMap = new Dictionary<Guid, UserDto>();
-            foreach (var userId in userIds)
+            var employeesMap = new Dictionary<Guid, UserDto>();
+            try
             {
-                try
+                var employeeDetails = await _authServiceClient.GetUsersByIdsAsync(userIds);
+                if (employeeDetails != null)
                 {
-                    var user = await userClient.GetFromJsonAsync<UserDto>($"api/users/{userId}", serializerOptions);
-                    if (user != null) userMap[userId] = user;
+                    employeesMap = employeeDetails.ToDictionary(e => e.Id);
                 }
-                catch { }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch user details from AuthService for reviews. Partial data will be shown.");
             }
 
             var dtos = new List<ProductReviewDto>();
             foreach (var review in pagedReviews.Items)
             {
                 var rootComment = await _commentRepository.FindRootCommentByReviewIdAsync(review.ReviewId);
-                var user = review.UserId.HasValue && userMap.ContainsKey(review.UserId.Value) ? userMap[review.UserId.Value] : null;
+                employeesMap.TryGetValue(review.UserId ?? Guid.Empty, out var user);
 
                 dtos.Add(new ProductReviewDto
                 {
@@ -115,9 +123,25 @@ namespace ReviewService.Services
                     ReviewComment = rootComment?.CommentContent,
                     CommentId = rootComment?.CommentId ?? 0,
                     CreatedAt = rootComment?.CommentCreatedAt ?? DateTimeOffset.MinValue,
+                    UpdatedAt = rootComment?.CommentUpdatedAt ?? DateTimeOffset.MinValue,
                     FullName = user?.Username,
                     UserImage = user?.UserImage
                 });
+            }
+
+            if (currentUserId.HasValue && page == 0 && dtos.Any())
+            {
+                var currentUserDto = employeesMap.GetValueOrDefault(currentUserId.Value);
+                if (currentUserDto != null)
+                {
+                    var currentUserReviewIndex = dtos.FindIndex(d => d.FullName == currentUserDto.Username);
+                    if (currentUserReviewIndex > 0)
+                    {
+                        var myReview = dtos[currentUserReviewIndex];
+                        dtos.RemoveAt(currentUserReviewIndex);
+                        dtos.Insert(0, myReview);
+                    }
+                }
             }
 
             return new PagedResult<ProductReviewDto>(dtos, pagedReviews.TotalCount);
@@ -126,7 +150,16 @@ namespace ReviewService.Services
         public async Task<IEnumerable<ReviewEligibilityDto>> GetReviewEligibilityAsync(Guid productId, Guid userId)
         {
             var orderClient = _httpClientFactory.CreateClient("orderservice");
-            var eligibleOrders = await orderClient.GetFromJsonAsync<List<OrderDto>>($"api/orders/user/{userId}/eligible-for-review?productId={productId}");
+            List<OrderDto>? eligibleOrders;
+            try
+            {
+                eligibleOrders = await orderClient.GetFromJsonAsync<List<OrderDto>>($"api/order/user/{userId}/eligible-for-review?productId={productId}");
+            }
+            catch (HttpRequestException)
+            {
+                _logger.LogWarning("Could not check review eligibility. OrderService may be down.");
+                return new List<ReviewEligibilityDto>();
+            }
 
             if (eligibleOrders == null || !eligibleOrders.Any())
             {
@@ -150,6 +183,57 @@ namespace ReviewService.Services
             return await _reviewRepository.ExistsByProductAndOrderAndUserAsync(productId, orderId, userId);
         }
 
+        public async Task<PagedResult<ProductReviewDto>> GetRepliesForCommentAsync(int commentId, int page, int size)
+        {
+            var pagedComments = await _reviewRepository.GetChildCommentsPaginatedAsync(commentId, page, size);
+
+            if (!pagedComments.Items.Any())
+            {
+                return new PagedResult<ProductReviewDto>(new List<ProductReviewDto>(), 0);
+            }
+
+            var userIds = pagedComments.Items
+                .Where(c => c.Review != null && c.Review.UserId.HasValue)
+                .Select(c => c.Review.UserId.Value)
+                .Distinct();
+
+            var employeesMap = new Dictionary<Guid, UserDto>();
+            try
+            {
+                var employeeDetails = await _authServiceClient.GetUsersByIdsAsync(userIds);
+                if (employeeDetails != null)
+                {
+                    employeesMap = employeeDetails.ToDictionary(e => e.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to fetch user details from AuthService for replies. Partial data will be shown.");
+            }
+
+            var dtos = pagedComments.Items.Select(comment =>
+            {
+                UserDto? user = null;
+                if (comment.Review != null && comment.Review.UserId.HasValue)
+                {
+                    employeesMap.TryGetValue(comment.Review.UserId.Value, out user);
+                }
+
+                return new ProductReviewDto
+                {
+                    ReviewId = comment.ReviewId ?? 0,
+                    CommentId = comment.CommentId,
+                    ReviewComment = comment.CommentContent,
+                    CreatedAt = comment.CommentCreatedAt ?? DateTimeOffset.MinValue,
+                    UpdatedAt = comment.CommentUpdatedAt ?? DateTimeOffset.MinValue,
+                    FullName = user?.Username,
+                    UserImage = user?.UserImage
+                };
+            }).ToList();
+
+            return new PagedResult<ProductReviewDto>(dtos, pagedComments.TotalCount);
+        }
+
         public async Task<IEnumerable<ReviewDto>> GetAllReviewsAsync()
         {
             var reviews = await _reviewRepository.GetAllAsync();
@@ -168,16 +252,7 @@ namespace ReviewService.Services
             if (reviewToUpdate == null) return false;
 
             _mapper.Map(reviewDto, reviewToUpdate);
-
-            try
-            {
-                await _reviewRepository.UpdateAsync(reviewToUpdate);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _reviewRepository.ExistsAsync(id)) return false;
-                else throw;
-            }
+            await _reviewRepository.UpdateAsync(reviewToUpdate);
             return true;
         }
 
@@ -186,11 +261,6 @@ namespace ReviewService.Services
             if (!await _reviewRepository.ExistsAsync(id)) return false;
             await _reviewRepository.DeleteAsync(id);
             return true;
-        }
-
-        public Task<PagedResult<ProductReviewDto>> GetRepliesForCommentAsync(int commentId, int page, int size)
-        {
-            throw new NotImplementedException();
         }
 
         public Task<PagedResult<UserReviewHistoryDto>> GetReviewsByUserIdAsync(Guid userId, int page, int size)

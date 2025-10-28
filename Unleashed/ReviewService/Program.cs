@@ -37,6 +37,11 @@ builder.Services.AddHttpClient("orderservice", client =>
     client.BaseAddress = new Uri("http://orderservice");
 });
 
+builder.Services.AddHttpClient("notificationservice", client =>
+{
+    client.BaseAddress = new Uri("http://notificationservice");
+});
+
 //
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();

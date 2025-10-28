@@ -5,5 +5,6 @@ namespace InventoryService.Clients.Interfaces
     public interface IAuthServiceClient
     {
         Task<UserDto?> GetUserByUsernameAsync(string username);
+        Task<IEnumerable<UserDto>> GetUsersByIdsAsync(IEnumerable<Guid> userIds);
     }
 }
