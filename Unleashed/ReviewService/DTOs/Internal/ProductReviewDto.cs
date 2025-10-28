@@ -4,8 +4,8 @@
     {
         public int ReviewId { get; set; }
         public int CommentId { get; set; }
-        public string? FullName { get; set; } // From AuthService
-        public string? UserImage { get; set; } // From AuthService
+        public string? FullName { get; set; }
+        public string? UserImage { get; set; }
         public int? ReviewRating { get; set; }
         public string? ReviewComment { get; set; }
         public DateTimeOffset CreatedAt { get; set; }

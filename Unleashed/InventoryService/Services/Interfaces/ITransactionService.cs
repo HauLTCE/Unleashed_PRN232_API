@@ -8,7 +8,9 @@ namespace InventoryService.Services.Interfaces
     public interface ITransactionService
     {
         Task<bool> CreateBulkStockTransactionsAsync(StockTransactionDto importDto);
-        Task<PaginatedResult<TransactionDto>> GetTransactionsFilteredAsync(string? searchTerm, string? dateFilter, string? sort, int page, int pageSize);
+        Task<PaginatedResult<TransactionCardDTO>> GetTransactionsFilteredAsync(string? searchTerm, string? dateFilter, string? sort, int page, int pageSize);
+        Task<bool> ReserveStockForOrderAsync(List<ProductVariationQuantityDto> items);
+        Task<bool> ReturnStockFromOrderAsync(List<ProductVariationQuantityDto> items, Guid? employeeId);
         Task<IEnumerable<TransactionDto>> GetAllTransactionsAsync();
         Task<TransactionDto?> GetTransactionByIdAsync(int id);
         Task<TransactionDto?> CreateTransactionAsync(CreateTransactionDto transactionDto);
