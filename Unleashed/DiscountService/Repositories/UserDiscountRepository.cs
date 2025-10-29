@@ -43,7 +43,7 @@ namespace DiscountService.Repositories
         }
 
         // Chỉnh sửa lại khóa chính từ (Guid, int) thành (int, Guid) cho nhất quán
-        public async Task<UserDiscount?> FindAsync((Guid, int) id)
+        public async Task<UserDiscount?> FindAsync((Guid,int) id)
         {
             return await _context.UserDiscounts.FindAsync(id.Item1, id.Item2);
         }
