@@ -53,7 +53,7 @@ namespace AuthService.Controllers
             {
                 return BadRequest("Registration failed. The username or email may already be in use.");
             }
-
+            
             try
             {
                 var emailToken = _jwtTokenGenerator.GenerateEmailToken(createdUser.UserId, createdUser.UserEmail);
@@ -87,7 +87,6 @@ namespace AuthService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error calling EmailService for user {Email}", createUserDto.UserEmail);
-                // Don't fail the registration, just log the error.
             }
 
             return Ok(createdUser);
@@ -100,7 +99,8 @@ namespace AuthService.Controllers
         {
             if (string.IsNullOrEmpty(token))
             {
-                return BadRequest(new { message = "Invalid confirmation link." });
+                _logger.LogWarning("Invalid email confirmation token received.");
+                return BadRequest(new { message = "Invalid confirmation linku." });
             }
 
             // 1. Validate the JWT

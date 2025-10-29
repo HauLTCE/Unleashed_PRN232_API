@@ -35,6 +35,7 @@ namespace AuthService.Services
             user.UserCreatedAt = DateTime.Now;
             user.UserUpdatedAt = DateTime.Now;
             user.UserPassword = HashingPassword.HashPassword(createUserDTO.UserPassword);
+            user.IsUserEnabled = (user.RoleId.Value == 1 || user.RoleId.Value == 3);
             if (await _userRepository.CreateAsync(user))
             {
                 return await _userRepository.SaveAsync() ? _mapper.Map<UserDTO>(user) : null;
