@@ -14,6 +14,10 @@ Unleashed/ProductService/bin/
 Unleashed/ProductService/obj/
 Unleashed/ReviewService/bin/
 Unleashed/ReviewService/obj/
+Unleashed/ImgBBUploadService/obj/
+Unleashed/ImgBBUploadService/bin/
+Unleashed/EmailService/obj/
+Unleashed/EmailService/bin/
 Unleashed/Unleashed.AppHost/bin/
 Unleashed/Unleashed.AppHost/obj/
 *.json
