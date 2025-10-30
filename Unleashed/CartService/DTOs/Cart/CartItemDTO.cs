@@ -9,5 +9,6 @@ namespace CartService.DTOs.Cart
         public int Quantity { get; set; }
         public int StockQuantity { get; set; }
         public SaleDTO? Sale { get; set; }
+        public decimal ? FinalPrice { get; set; }
     }
 }

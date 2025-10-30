@@ -8,7 +8,7 @@ namespace DiscountService.Services.Interfaces
     public interface IDiscountService
     {
         // CRUD và Quản lý
-        Task<(IEnumerable<DiscountViewDto> Data, int TotalRecords)> GetAllDiscountsAsync(string? search, int? statusId, int? typeId, int page, int size);
+        Task<IEnumerable<DiscountViewDto>> GetAllDiscountsAsync(string? search, int? statusId, int? typeId);
         Task<DiscountViewDto?> GetDiscountByIdAsync(int id);
         Task<DiscountViewDto> CreateDiscountAsync(CreateDiscountDto createDto);
         Task<DiscountViewDto?> UpdateDiscountAsync(int id, UpdateDiscountDto updateDto);
@@ -21,7 +21,7 @@ namespace DiscountService.Services.Interfaces
         Task<object> GetUsersByDiscountIdAsync(int discountId);
 
         // Logic nghiệp vụ cho User/Checkout
-        Task<(IEnumerable<DiscountViewDto> Data, int TotalRecords)> GetDiscountsForUserAsync(string userId, string? search, int? statusId, int? typeId, int page, int size, string? sortBy, string? sortOrder);
+        Task<IEnumerable<DiscountViewDto>> GetDiscountsForUserAsync(string userId, string? search, int? statusId, int? typeId,string? sortBy, string? sortOrder);
         Task<DiscountViewDto?> GetDiscountForUserByIdAsync(int discountId, string userId);
         Task<object> CheckUserDiscountAsync(string discountCode, decimal subTotal, ClaimsPrincipal user);
         Task UpdateUsageCountAsync(string discountCode, string userId);

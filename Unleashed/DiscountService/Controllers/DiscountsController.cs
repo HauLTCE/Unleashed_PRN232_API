@@ -75,11 +75,9 @@ namespace DiscountService.Controllers
         public async Task<IActionResult> GetAllDiscounts(
             [FromQuery] string? search,
             [FromQuery] int? statusId,
-            [FromQuery] int? typeId,
-            [FromQuery] int page = 0,
-            [FromQuery] int size = 10)
+            [FromQuery] int? typeId)
         {
-            var result = await _discountService.GetAllDiscountsAsync(search, statusId, typeId, page, size);
+            var result = await _discountService.GetAllDiscountsAsync(search, statusId, typeId);
             return Ok(result);
         }
 
@@ -126,16 +124,14 @@ namespace DiscountService.Controllers
             [FromQuery] string? search,
             [FromQuery] int? statusId,
             [FromQuery] int? typeId,
-            [FromQuery] int page = 0,
-            [FromQuery] int size = 9,
-            // SỬA LỖI Ở DÒNG DƯỚI ĐÂY: Thêm "= null"
             [FromQuery] string? sortBy = null,
             [FromQuery] string sortOrder = "asc")
         {
             var userId = GetCurrentUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _discountService.GetDiscountsForUserAsync(userId, search, statusId, typeId, page, size, sortBy, sortOrder);
+            // THAY ĐỔI: Bỏ tham số page và size khi gọi service
+            var result = await _discountService.GetDiscountsForUserAsync(userId, search, statusId, typeId, sortBy, sortOrder);
             return Ok(result);
         }
 
