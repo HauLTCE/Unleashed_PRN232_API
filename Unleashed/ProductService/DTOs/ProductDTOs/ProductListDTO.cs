@@ -1,5 +1,4 @@
 ﻿using ProductService.DTOs.CategoryDTOs;
-using ProductService.DTOs.SaleDTOs;
 
 namespace ProductService.DTOs.ProductDTOs
 {
@@ -26,7 +25,6 @@ namespace ProductService.DTOs.ProductDTOs
 
         // Pricing
         public decimal? ProductPrice { get; set; }    // Giá gốc (nếu có)
-        public SaleDTO? Sale { get; set; }            // Thông tin CTKM (tùy chọn)
         public decimal? SaleValue { get; set; }       // Giá trị KM (tỷ lệ % hoặc số tiền)
 
         // Ratings

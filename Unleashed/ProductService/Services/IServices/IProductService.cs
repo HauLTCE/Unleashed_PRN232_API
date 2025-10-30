@@ -13,6 +13,5 @@ namespace ProductService.Services.IServices
         Task<bool> DeleteProductAsync(Guid id);
         Task<bool> DeleteVariationAsync(int variationId);
         Task<ProductForWishlistDTO?> GetProductInfoForWishlistAsync(Guid productId);
-        Task<PagedResult<ProductListDTO>> GetPagedForProductListAsync(PaginationParams pagination);
     }
 }
