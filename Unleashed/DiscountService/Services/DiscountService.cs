@@ -141,16 +141,14 @@ namespace DiscountService.Services
             return await _discountRepo.SaveAsync();
         }
 
-        public async Task<(IEnumerable<DiscountViewDto> Data, int TotalRecords)> GetAllDiscountsAsync(string? search, int? statusId, int? typeId, int page, int size)
+        public async Task<IEnumerable<DiscountViewDto>> GetAllDiscountsAsync(string? search, int? statusId, int? typeId)
         {
-            // SỬA LỖI: Khai báo rõ kiểu là IQueryable<Discount> thay vì dùng 'var'
             IQueryable<Discount> query = _discountRepo.All()
                 .Include(d => d.DiscountStatus)
                 .Include(d => d.DiscountType);
 
             if (!string.IsNullOrEmpty(search))
             {
-                // Bây giờ phép gán này sẽ hợp lệ
                 query = query.Where(d => d.DiscountCode.Contains(search) || (d.DiscountDescription != null && d.DiscountDescription.Contains(search)));
             }
             if (statusId.HasValue)
@@ -162,13 +160,11 @@ namespace DiscountService.Services
                 query = query.Where(d => d.DiscountTypeId == typeId.Value);
             }
 
-            var totalRecords = await query.CountAsync();
+            // THAY ĐỔI: Bỏ .Skip() và .Take()
             var data = await query.OrderByDescending(d => d.DiscountId)
-                                .Skip(page * size)
-                                .Take(size)
                                 .ToListAsync();
 
-            return (_mapper.Map<IEnumerable<DiscountViewDto>>(data), totalRecords);
+            return _mapper.Map<IEnumerable<DiscountViewDto>>(data);
         }
 
         public async Task<DiscountViewDto?> GetDiscountByIdAsync(int id)
@@ -250,7 +246,7 @@ namespace DiscountService.Services
         #endregion
 
         #region Logic cho người dùng cuối
-        public async Task<(IEnumerable<DiscountViewDto> Data, int TotalRecords)> GetDiscountsForUserAsync(string userId, string? search, int? statusId, int? typeId, int page, int size, string? sortBy, string? sortOrder)
+        public async Task<IEnumerable<DiscountViewDto>> GetDiscountsForUserAsync(string userId, string? search, int? statusId, int? typeId, string? sortBy, string? sortOrder)
         {
             if (!Guid.TryParse(userId, out Guid userGuid))
             {
@@ -260,13 +256,14 @@ namespace DiscountService.Services
             var userDiscountIds = await _userDiscountRepo.FindDiscountIdsByUserIdAsync(userGuid);
             if (!userDiscountIds.Any())
             {
-                return (Enumerable.Empty<DiscountViewDto>(), 0);
+                // THAY ĐỔI: Kiểu trả về
+                return Enumerable.Empty<DiscountViewDto>();
             }
 
             IQueryable<Discount> query = _discountRepo.All()
-            .Include(d => d.DiscountStatus) 
-            .Include(d => d.DiscountType)
-            .Where(d => userDiscountIds.Contains(d.DiscountId));
+                .Include(d => d.DiscountStatus)
+                .Include(d => d.DiscountType)
+                .Where(d => userDiscountIds.Contains(d.DiscountId));
 
             if (!string.IsNullOrEmpty(search))
             {
@@ -292,10 +289,10 @@ namespace DiscountService.Services
                 query = query.OrderBy(d => d.DiscountStatusId).ThenBy(d => d.DiscountEndDate);
             }
 
-            var totalRecords = await query.CountAsync();
-            var data = await query.Skip(page * size).Take(size).ToListAsync();
+            // THAY ĐỔI: Bỏ .Skip() và .Take()
+            var data = await query.ToListAsync();
 
-            return (_mapper.Map<IEnumerable<DiscountViewDto>>(data), totalRecords);
+            return _mapper.Map<IEnumerable<DiscountViewDto>>(data);
         }
 
         public async Task<DiscountViewDto?> GetDiscountForUserByIdAsync(int discountId, string userId)

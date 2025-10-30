@@ -40,6 +40,8 @@ builder.Services.AddAutoMapper(cfg =>
 builder.Services.AddScoped<IDiscountRepository, DiscountRepository>();
 builder.Services.AddScoped<IUserDiscountRepository, UserDiscountRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<IDiscountStatusRepository, DiscountStatusRepository>();
+builder.Services.AddScoped<IDiscountTypeRepository, DiscountTypeRepository>();
 builder.Services.AddScoped<IDiscountService, DiscountService.Services.DiscountService>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
