@@ -131,7 +131,7 @@ namespace AuthService.Services
                 // User not found, nothing to delete
                 return false;
             }
-            userToDelete.IsUserEnabled = false;
+            userToDelete.IsUserEnabled = !userToDelete.IsUserEnabled;
             // 2. Pass the entity to the repository for deletion
             if (_userRepository.Update(userToDelete))
             {

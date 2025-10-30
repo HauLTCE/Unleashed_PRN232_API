@@ -5,18 +5,18 @@ using OrderService.Repositories.Interfaces;
 
 namespace OrderService.Repositories
 {
-    public class OrderVariationSingleRepo : IOrderVariationSingleRepo
+    public class OrderVariationRepo : IOrderVariationRepo
     {
         private readonly OrderDbContext _context;
-        public OrderVariationSingleRepo(OrderDbContext context) {
+        public OrderVariationRepo(OrderDbContext context) {
             _context = context;
         }
-        public IQueryable<OrderVariationSingle> All()
+        public IQueryable<Models.OrderVariation> All()
         {
             return _context.OrderVariationSingles.AsQueryable();
         }
 
-        public async Task<bool> CreateAsync(OrderVariationSingle entity)
+        public async Task<bool> CreateAsync(Models.OrderVariation entity)
         {
             try
             {
@@ -29,7 +29,7 @@ namespace OrderService.Repositories
             }
         }
 
-        public bool Delete(OrderVariationSingle entity)
+        public bool Delete(Models.OrderVariation entity)
         {
             try 
             {
@@ -42,14 +42,14 @@ namespace OrderService.Repositories
             }
         }
 
-        public async Task<OrderVariationSingle?> FindAsync((Guid, int) id)
+        public async Task<Models.OrderVariation?> FindAsync((Guid, int) id)
         {
             return await _context.OrderVariationSingles.FindAsync(id.Item1, id.Item2);
         }
 
         public async Task<bool> IsAny((Guid, int) id)
         {
-            return await _context.OrderVariationSingles.AnyAsync(ovs => ovs.OrderId == id.Item1 && ovs.VariationSingleId == id.Item2);
+            return await _context.OrderVariationSingles.AnyAsync(ovs => ovs.OrderId == id.Item1 && ovs.VariationId == id.Item2);
         }
 
         public async Task<bool> SaveAsync()
@@ -57,7 +57,7 @@ namespace OrderService.Repositories
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public bool Update(OrderVariationSingle entity)
+        public bool Update(Models.OrderVariation entity)
         {
             try
             {

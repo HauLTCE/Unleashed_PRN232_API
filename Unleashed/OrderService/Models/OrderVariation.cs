@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace OrderService.Models;
 
-[PrimaryKey("OrderId", "VariationSingleId")]
-[Table("order_variation_single")]
-public partial class OrderVariationSingle
+[PrimaryKey("OrderId", "VariationId")]
+[Table("order_variation")]
+public partial class OrderVariation
 {
     [Key]
     [Column("order_id")]
@@ -16,8 +16,11 @@ public partial class OrderVariationSingle
     public Guid OrderId { get; set; }
 
     [Key]
-    [Column("variation_single_id")]
-    public int VariationSingleId { get; set; }
+    [Column("variation_id")]
+    public int VariationId { get; set; }
+
+    [Column("Quantity")]
+    public int? Quantity { get; set; }
 
     [Column("sale_id")]
     public int? SaleId { get; set; }
@@ -26,6 +29,6 @@ public partial class OrderVariationSingle
     public decimal VariationPriceAtPurchase { get; set; }
 
     [ForeignKey("OrderId")]
-    [InverseProperty("OrderVariationSingles")]
+    [InverseProperty("OrderVariations")]
     public virtual Order Order { get; set; } = null!;
 }

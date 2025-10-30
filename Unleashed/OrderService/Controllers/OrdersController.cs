@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization; // Thêm thư viện Authorization
 using Microsoft.AspNetCore.Mvc;
 using OrderService.Dtos;
+using OrderService.DTOs;
 using OrderService.Services.Interfaces;
 using System.Security.Claims; // Thêm thư viện Claims
 
@@ -81,15 +82,15 @@ namespace OrderService.Controllers
         // [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto createOrderDto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            //if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // Gán UserId của người dùng đang đăng nhập
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
-            {
-                return Unauthorized();
-            }
-            createOrderDto.UserId = userId;
+            //// Gán UserId của người dùng đang đăng nhập
+            //var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            //if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            //{
+            //    return Unauthorized();
+            //}
+            createOrderDto.UserId = Guid.Parse("910FF8D2-05BE-4F7B-9E8C-B053FBF6F1F6");
 
             try
             {
@@ -147,12 +148,6 @@ namespace OrderService.Controllers
             }
         }
 
-        // Cần thêm DTO cho việc review
-        public class ReviewOrderDto
-        {
-            public bool IsApproved { get; set; }
-        }
-
-        // ... (Thêm các endpoint khác cho Confirm Receipt, Return,...)
+       
     }
 }

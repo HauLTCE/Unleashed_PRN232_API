@@ -2,17 +2,23 @@
 
 namespace OrderService.Dtos
 {
-    public class OrderVariationSingleDto
+    public class OrderVariationDto
     {
-        public int VariationSingleId { get; set; }
+        public int VariationSId { get; set; }
         public int? SaleId { get; set; }
+        public int? Quantity { get; set; }
+
         public decimal VariationPriceAtPurchase { get; set; }
     }
 
-    public class CreateOrderVariationSingleDto
+    public class CreateOrderVariationDto
     {
         [Required]
-        public int VariationSingleId { get; set; }
+        public int VariationId { get; set; }
+
+        [Required]
+        public int? Quantity { get; set; }
+
         public int? SaleId { get; set; }
         [Required]
         public decimal VariationPriceAtPurchase { get; set; }

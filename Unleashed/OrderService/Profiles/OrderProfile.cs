@@ -8,8 +8,8 @@ namespace OrderService.Profiles
     {
         public OrderProfile() 
         {
-            CreateMap<OrderVariationSingle, OrderVariationSingleDto>();
-            CreateMap<CreateOrderVariationSingleDto, OrderVariationSingle>();
+            CreateMap<OrderVariation, OrderVariationDto>();
+            CreateMap<CreateOrderVariationDto, OrderVariation>();
 
             // Order Mappings
             CreateMap<Order, OrderDto>()
