@@ -12,7 +12,6 @@ namespace ProductService.Repositories.IRepositories
         Task<Product?> UpdateAsync(Product product);
         Task<bool> DeleteAsync(Guid id);
         Task<bool> ExistsAsync(Guid id);
-        Task<PagedResult<ProductListDTO>> GetPagedForProductListAsync(PaginationParams pagination);
         Task<bool> DeleteByProductIdAsync(Guid productId);
         Task<Product?> GetByIdWithFirstVariationAsync(Guid productId);
 
