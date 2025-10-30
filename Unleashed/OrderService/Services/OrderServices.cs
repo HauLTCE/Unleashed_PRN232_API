@@ -12,7 +12,7 @@ namespace OrderService.Services
     {
         private readonly IOrderRepository _orderRepository;
         private readonly IOrderStatusRepo _orderStatusRepository;
-        private readonly IOrderVariationSingleRepo _orderVariationSingleRepository;
+        private readonly IOrderVariationRepo _orderVariationSingleRepository;
         private readonly IMapper _mapper;
 
         // Giả định đã inject các service khác (cần được bạn tạo ra)
@@ -21,7 +21,7 @@ namespace OrderService.Services
         // private readonly IPaymentService _paymentService;
         // private readonly IDiscountService _discountService;
 
-        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationSingleRepo orderVariationSingleRepository, IMapper mapper)
+        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationRepo orderVariationSingleRepository, IMapper mapper)
         {
             _orderRepository = orderRepository;
             _orderStatusRepository = orderStatusRepository;
@@ -36,6 +36,8 @@ namespace OrderService.Services
 
             var order = _mapper.Map<Order>(createOrderDto);
 
+            order.OrderVariations = [];
+
             // 2. Thiết lập các giá trị mặc định cho đơn hàng
             order.OrderId = Guid.NewGuid();
             order.OrderDate = DateTimeOffset.UtcNow;
@@ -49,11 +51,21 @@ namespace OrderService.Services
 
             await _orderRepository.CreateAsync(order);
 
-            // 4. Lưu chi tiết đơn hàng (OrderVariationSingles)
-            foreach (var ovsDto in createOrderDto.OrderVariationSingles)
+           
+            var groupedItems = createOrderDto.OrderVariations
+            .GroupBy(dto => dto.VariationId) 
+            .Select(group => new
             {
-                var ovs = _mapper.Map<OrderVariationSingle>(ovsDto);
+                RepresentingDto = group.First(),
+                Total = group.Sum(dto => dto.VariationPriceAtPurchase)
+            });
+
+            foreach (var item in groupedItems)
+            {
+                var ovs = _mapper.Map<OrderVariation>(item.RepresentingDto);
                 ovs.OrderId = order.OrderId;
+                ovs.VariationPriceAtPurchase = item.Total; 
+
                 await _orderVariationSingleRepository.CreateAsync(ovs);
             }
 

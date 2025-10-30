@@ -81,6 +81,7 @@ namespace OrderService.Repositories
         {
             try 
             {
+                entity.OrderUpdatedAt = DateTimeOffset.UtcNow;
                 _context.Orders.Update(entity);
                 return true;
             }
@@ -95,7 +96,7 @@ namespace OrderService.Repositories
                 .Include(o => o.OrderStatus)
                 .Include(o => o.PaymentMethod)
                 .Include(o => o.ShippingMethod)
-                .Include(o => o.OrderVariationSingles)
+                .Include(o => o.OrderVariations)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId);
         }
 

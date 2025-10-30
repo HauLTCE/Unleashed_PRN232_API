@@ -6,7 +6,7 @@ namespace OrderService.Dtos
 {
     public class OrderDto
     {
-        public string OrderId { get; set; }
+        public Guid OrderId { get; set; }
         public Guid? UserId { get; set; }
         public int? OrderStatusId { get; set; }
         public int? PaymentMethodId { get; set; }
@@ -27,7 +27,7 @@ namespace OrderService.Dtos
         public string? OrderStatusName { get; set; }
         public string? PaymentMethodName { get; set; }
         public string? ShippingMethodName { get; set; }
-        public ICollection<OrderVariationSingleDto> OrderVariationSingles { get; set; }
+        public ICollection<OrderVariationDto> OrderVariations { get; set; }
     }
 
     public class CreateOrderDto
@@ -45,7 +45,7 @@ namespace OrderService.Dtos
         public string? OrderBillingAddress { get; set; }
         public string? OrderNote { get; set; }
 
-        public ICollection<CreateOrderVariationSingleDto> OrderVariationSingles { get; set; }
+        public ICollection<CreateOrderVariationDto> OrderVariations { get; set; }
     }
 
     public class UpdateOrderDto

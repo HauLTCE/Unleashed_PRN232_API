@@ -60,17 +60,17 @@ public partial class Order
     public decimal? OrderTax { get; set; }
 
     [Column("order_created_at")]
-    public DateTimeOffset? OrderCreatedAt { get; set; }
+    public DateTimeOffset? OrderCreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     [Column("order_updated_at")]
-    public DateTimeOffset? OrderUpdatedAt { get; set; }
+    public DateTimeOffset? OrderUpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     [ForeignKey("OrderStatusId")]
     [InverseProperty("Orders")]
     public virtual OrderStatus? OrderStatus { get; set; }
 
     [InverseProperty("Order")]
-    public virtual ICollection<OrderVariationSingle> OrderVariationSingles { get; set; } = new List<OrderVariationSingle>();
+    public virtual ICollection<OrderVariation> OrderVariations { get; set; } = [];
 
     [ForeignKey("PaymentMethodId")]
     [InverseProperty("Orders")]

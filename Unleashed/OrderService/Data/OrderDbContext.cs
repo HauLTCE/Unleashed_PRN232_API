@@ -16,7 +16,7 @@ public partial class OrderDbContext : DbContext
 
     public virtual DbSet<OrderStatus> OrderStatuses { get; set; }
 
-    public virtual DbSet<OrderVariationSingle> OrderVariationSingles { get; set; }
+    public virtual DbSet<OrderVariation> OrderVariationSingles { get; set; }
 
     public virtual DbSet<PaymentMethod> PaymentMethods { get; set; }
 
@@ -40,13 +40,13 @@ public partial class OrderDbContext : DbContext
             entity.HasKey(e => e.OrderStatusId).HasName("order_status_pkey");
         });
 
-        modelBuilder.Entity<OrderVariationSingle>(entity =>
+        modelBuilder.Entity<OrderVariation>(entity =>
         {
-            entity.HasKey(e => new { e.OrderId, e.VariationSingleId }).HasName("order_variation_single_pkey");
+            entity.HasKey(e => new { e.OrderId, e.VariationId }).HasName("order_variation_pkey");
 
-            entity.HasOne(d => d.Order).WithMany(p => p.OrderVariationSingles)
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderVariations)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("order_variation_single_order_id_fkey");
+                .HasConstraintName("order_variation_id_fkey");
         });
 
         modelBuilder.Entity<PaymentMethod>(entity =>

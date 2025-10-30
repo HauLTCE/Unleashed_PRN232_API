@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Data;
 using OrderService.Profiles;
@@ -5,21 +6,48 @@ using OrderService.Repositories;
 using OrderService.Repositories.Interfaces;
 using OrderService.Services;
 using OrderService.Services.Interfaces;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
+    options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins(builder.Configuration["FrontEnd"])
                   .AllowAnyMethod()
-                  .AllowAnyHeader();
+                  .WithHeaders("Content-Type", "Authorization");
         });
+});
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        // 1. Validates that the token was signed by the key we specified.
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+
+        // 2. Set these to 'false' because don't have issuer or audience.
+        ValidateIssuer = false,
+        ValidateAudience = false,
+
+        // 3. Validates that the token has not expired.
+        ValidateLifetime = true,
+
+        // 4. Sets a grace period for token expiration to account for clock differences.
+        // TimeSpan.Zero means no grace period.
+        ClockSkew = TimeSpan.Zero
+    };
 });
 
 builder.Services.AddHttpClient("authservice", client =>
@@ -62,7 +90,7 @@ builder.Services.AddScoped<IPaymenMethodRepo, PaymentMethodRepo>();
 builder.Services.AddScoped<IShippingRepo, ShippingRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderServices>();
-builder.Services.AddScoped<IOrderVariationSingleRepo, OrderVariationSingleRepo>();
+builder.Services.AddScoped<IOrderVariationRepo, OrderVariationRepo>();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
