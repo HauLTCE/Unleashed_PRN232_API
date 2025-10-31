@@ -65,5 +65,11 @@ namespace InventoryService.Repositories
         {
             return await _context.StockVariations.Where(sv => sv.VariationId == variationId).ToListAsync();
         }
+        public async Task<List<StockVariation>> GetByStockIdAsync(int stockId)
+        {
+            return await _context.StockVariations
+                .Where(sv => sv.StockId == stockId)
+                .ToListAsync();
+        }
     }
 }

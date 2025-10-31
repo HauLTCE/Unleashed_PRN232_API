@@ -70,8 +70,8 @@ namespace AuthService.Controllers
             return Ok(user);
         }
 
-        // GET: api/Users/ByUsername/me
-        [HttpGet("ByUsername/{username}")] //what the fuck bro?
+        // GET: api/Users/by-username/me
+        [HttpGet("by-username/{username}")] //what the fuck bro?
         [ProducesResponseType(typeof(ImportServiceUserDTO), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

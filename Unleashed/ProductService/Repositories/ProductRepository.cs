@@ -23,6 +23,9 @@ namespace ProductService.Repositories
                 .Include(p => p.Brand)
                 .Include(p => p.ProductStatus)
                 .Include(p => p.Variations)
+                    .ThenInclude(v => v.Color)
+                .Include(p => p.Variations)
+                    .ThenInclude(v => v.Size)
                 .AsQueryable();
 
             // Search
@@ -33,7 +36,6 @@ namespace ProductService.Repositories
                     p.ProductCode.Contains(pagination.Search));
             }
 
-            // Order by latest
             query = query.OrderByDescending(p => p.ProductCreatedAt);
 
             return await query.ToPagedResultAsync(pagination.PageNumber, pagination.PageSize);

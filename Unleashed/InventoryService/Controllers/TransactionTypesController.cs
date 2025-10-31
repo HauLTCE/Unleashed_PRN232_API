@@ -1,5 +1,6 @@
 ﻿using InventoryService.DTOs.TransactionType;
 using InventoryService.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ namespace InventoryService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "ADMIN,STAFF")]
     public class TransactionTypesController : ControllerBase
     {
         private readonly ITransactionTypeService _transactionTypeService;

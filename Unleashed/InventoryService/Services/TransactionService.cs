@@ -61,7 +61,8 @@ namespace InventoryService.Services
                 var variationDetails = await _productCatalogClient.GetVariationsByIdsAsync(variationIds);
                 if (variationDetails != null)
                 {
-                    variationsMap = variationDetails.ToDictionary(v => v.Id);
+                    // ✅ FIX: Use the correct property 'VariationId' as the dictionary key
+                    variationsMap = variationDetails.ToDictionary(v => v.VariationId);
                 }
             }
             catch (Exception ex)
@@ -108,19 +109,26 @@ namespace InventoryService.Services
                 StockName = t.Stock?.StockName,
                 ProviderName = t.Provider?.ProviderName,
                 VariationImage = variation?.VariationImage,
-                ProductName = variation?.ProductName,
-                BrandName = variation?.BrandName,
-                CategoryName = variation?.CategoryName,
-                SizeName = variation?.SizeName,
-                ColorName = variation?.ColorName,
-                ColorHexCode = variation?.ColorHexCode,
+                ProductName = variation?.Product?.ProductName,
+                BrandName = variation?.Product?.BrandName,
+                CategoryName = variation?.Product?.CategoryName,
+                SizeName = variation?.Size?.SizeName,
+                ColorName = variation?.Color?.ColorName,
+                ColorHexCode = variation?.Color?.ColorHexCode,
                 InchargeEmployeeUsername = employee?.Username
             };
         }
 
         public async Task<bool> CreateBulkStockTransactionsAsync(StockTransactionDto importDto)
         {
-            var user = await _authServiceClient.GetUserByUsernameAsync(importDto.Username!);
+            if (string.IsNullOrWhiteSpace(importDto.Username))
+            {
+                _logger.LogWarning("Bulk import failed: Username was not provided.");
+                return false;
+            }
+
+            var user = await _authServiceClient.GetUserByUsernameAsync(importDto.Username);
+
             if (user == null)
             {
                 _logger.LogWarning("Bulk import failed: User '{Username}' not found.", importDto.Username);
@@ -130,9 +138,9 @@ namespace InventoryService.Services
             var variationIds = importDto.Variations!.Select(v => v.VariationId!.Value);
             var variationsFromApi = (await _productCatalogClient.GetVariationsByIdsAsync(variationIds)).ToList();
 
-            if (variationsFromApi.Count != variationIds.Count())
+            if (variationsFromApi == null || !variationsFromApi.Any())
             {
-                _logger.LogWarning("Bulk import failed: Not all variation IDs were found.");
+                _logger.LogWarning("Bulk import failed: Product Catalog Service returned no variations for the provided IDs.");
                 return false;
             }
 
@@ -148,7 +156,13 @@ namespace InventoryService.Services
 
                 foreach (var item in importDto.Variations!)
                 {
-                    var variationInfo = variationsFromApi.First(v => v.Id == item.VariationId!.Value);
+                    var variationInfo = variationsFromApi.FirstOrDefault(v => v.VariationId == item.VariationId!.Value);
+
+                    if (variationInfo == null)
+                    {
+                        _logger.LogWarning("Skipping import for VariationId {VariationId} because it was not found in the Product Catalog Service.", item.VariationId);
+                        continue;
+                    }
 
                     newTransactions.Add(new Transaction
                     {
@@ -178,14 +192,21 @@ namespace InventoryService.Services
                     }
                 }
 
-                if (newTransactions.Any()) await _context.Transactions.AddRangeAsync(newTransactions);
+                if (!newTransactions.Any())
+                {
+                    _logger.LogWarning("Bulk import failed because no valid variations were found or provided.");
+                    await dbTransaction.RollbackAsync();
+                    return false;
+                }
+
                 if (stockVariationsToCreate.Any()) await _context.StockVariations.AddRangeAsync(stockVariationsToCreate);
                 if (stockVariationsToUpdate.Any()) _context.StockVariations.UpdateRange(stockVariationsToUpdate);
+                await _context.Transactions.AddRangeAsync(newTransactions);
 
                 await _context.SaveChangesAsync();
                 await dbTransaction.CommitAsync();
 
-                _logger.LogInformation("Successfully imported {Count} stock transaction records.", importDto.Variations.Count);
+                _logger.LogInformation("Successfully imported {Count} stock transaction records.", newTransactions.Count);
                 return true;
             }
             catch (Exception ex)
@@ -195,6 +216,7 @@ namespace InventoryService.Services
                 return false;
             }
         }
+
 
         public async Task<bool> ReserveStockForOrderAsync(List<ProductVariationQuantityDto> items)
         {

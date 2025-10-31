@@ -118,6 +118,11 @@ namespace InventoryService.Services
 
             return await Task.WhenAll(stockTasks);
         }
+        public async Task<IEnumerable<StockVariationDto>> GetStockVariationsByStockIdAsync(int stockId)
+        {
+            var stockVariations = await _stockVariationRepository.GetByStockIdAsync(stockId);
+            return _mapper.Map<IEnumerable<StockVariationDto>>(stockVariations);
+        }
 
     }
 }

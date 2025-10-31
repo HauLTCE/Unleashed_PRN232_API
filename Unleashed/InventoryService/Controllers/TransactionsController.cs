@@ -39,7 +39,6 @@ namespace InventoryService.Controllers
         }
 
         [HttpPost("reserve-order")]
-        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ReserveStock([FromBody] List<ProductVariationQuantityDto> items)
