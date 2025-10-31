@@ -155,5 +155,18 @@ namespace ProductService.Controllers
                 if (status == null) return NotFound();
                 return Ok(status);
         }
+
+        // POST: api/products/batch
+        [HttpPost("batch")]
+        public async Task<ActionResult<IEnumerable<ProductSummaryDTO>>> GetProductsByIds([FromBody] IEnumerable<Guid> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return BadRequest("Product IDs must be provided.");
+            }
+
+            var products = await _productService.GetProductSummariesByIdsAsync(ids);
+            return Ok(products);
+        }
     }
 }

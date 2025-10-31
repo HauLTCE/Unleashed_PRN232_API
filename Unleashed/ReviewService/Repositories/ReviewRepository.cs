@@ -104,5 +104,18 @@ namespace ReviewService.Repositories
 
             return new PagedResult<Review>(items, totalCount);
         }
+
+        public async Task<PagedResult<Review>> GetRecentReviewsAsync(int page, int size)
+        {
+            var query = _context.Reviews
+                .Include(r => r.Comments)
+                .Where(r => r.ReviewRating != null)
+                .OrderByDescending(r => r.ReviewId);
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip(page * size).Take(size).ToListAsync();
+
+            return new PagedResult<Review>(items, totalCount);
+        }
     }
 }

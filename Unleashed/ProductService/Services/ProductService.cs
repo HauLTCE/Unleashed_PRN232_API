@@ -287,5 +287,20 @@ namespace ProductService.Services
 
             return dto;
         }
+
+
+        public async Task<IEnumerable<ProductSummaryDTO>> GetProductSummariesByIdsAsync(IEnumerable<Guid> ids)
+        {
+            var products = await _productRepository.GetByIdsAsync(ids);
+
+            return products.Select(p => new ProductSummaryDTO
+            {
+                ProductId = p.ProductId,
+                ProductName = p.ProductName,
+                // Take the first variation's image as the product image
+                ProductImageUrl = p.Variations.FirstOrDefault()?.VariationImage
+            });
+        }
+
     }
 }

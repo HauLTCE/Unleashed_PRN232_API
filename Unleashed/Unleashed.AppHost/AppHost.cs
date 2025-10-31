@@ -14,7 +14,10 @@ var orderService = builder.AddProject<Projects.OrderService>("orderservice");
 
 var discountService = builder.AddProject<Projects.DiscountService>("discountservice");
 
-var reviewService = builder.AddProject<Projects.ReviewService>("reviewservice");
+var reviewService = builder.AddProject<Projects.ReviewService>("reviewservice")
+                           .WithReference(authService)
+                           .WithReference(productService)
+                           .WithReference(orderService);
 
 var notificationService = builder.AddProject<Projects.NotificationService>("notificationservice");
 
@@ -80,10 +83,6 @@ orderService.WithReference(authService)
 
 discountService.WithReference(authService)
                .WithReference(notificationService);
-
-reviewService.WithReference(authService)
-             .WithReference(productService)
-             .WithReference(orderService);
 
 //===========================================================================================================================================
 

@@ -35,5 +35,10 @@ public class UserProfile : Profile
         // existing data in the database with null values.
         CreateMap<UpdateUserDTO, User>()
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+
+        CreateMap<User, UserSummaryDTO>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.UserId))
+                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserFullname));
     }
 }

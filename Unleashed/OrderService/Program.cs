@@ -64,7 +64,6 @@ if (string.IsNullOrEmpty(productApiUrl))
     throw new ArgumentNullException("ServiceUrls:ProductApiBase is not configured.");
 }
 
-
 builder.Services.AddHttpClient<IProductApiClient, ProductApiClient>(client =>
 {
     client.BaseAddress = new Uri(productApiUrl);

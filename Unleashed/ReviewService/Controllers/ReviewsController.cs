@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ReviewService.Clients;
 using ReviewService.DTOs.Review;
 using ReviewService.Services.Interfaces;
 using System.Security.Claims;
@@ -11,10 +12,12 @@ namespace ReviewService.Controllers
     public class ReviewsController : ControllerBase
     {
         private readonly IReviewService _reviewService;
+        private readonly ILogger<ReviewsController> _logger;
 
-        public ReviewsController(IReviewService reviewService)
+        public ReviewsController(IReviewService reviewService, ILogger<ReviewsController> logger)
         {
             _reviewService = reviewService;
+            _logger = logger;
         }
 
         // POST: api/reviews
@@ -102,6 +105,16 @@ namespace ReviewService.Controllers
             var deleteResult = await _reviewService.DeleteReviewAsync(id);
             if (!deleteResult) return NotFound();
             return NoContent();
+        }
+
+        // GET: api/reviews/dashboard
+        [HttpGet("dashboard")]
+        [Authorize(Roles = "ADMIN,STAFF")]
+        public async Task<IActionResult> GetDashboardReviews([FromQuery] int page = 0, [FromQuery] int size = 10)
+        {
+            _logger.LogInformation("CALLED GET: api/reviews/dashboard");
+            var result = await _reviewService.GetDashboardReviewsAsync(page, size);
+            return Ok(result);
         }
     }
 }

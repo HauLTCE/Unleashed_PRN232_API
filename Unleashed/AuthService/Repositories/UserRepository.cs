@@ -123,5 +123,19 @@ namespace AuthService.Repositories
         {
           return await _authDbContext.Users.Include(u => u.Role).ToListAsync();
         }
+
+        public async Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return Enumerable.Empty<User>();
+            }
+
+            // Use Where with Contains to fetch all users whose UserId is in the provided list
+            return await _authDbContext.Users
+                                       .Include(u => u.Role)
+                                       .Where(u => ids.Contains(u.UserId))
+                                       .ToListAsync();
+        }
     }
 }

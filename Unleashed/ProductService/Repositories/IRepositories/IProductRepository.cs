@@ -22,5 +22,7 @@ namespace ProductService.Repositories.IRepositories
         Task SaveChangesAsync();
 
         Task<Product?> GetByProductNameAsync(string productName);
+
+        Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<Guid> ids); //DO NOT CHANGE OR MODIFY
     }
 }
