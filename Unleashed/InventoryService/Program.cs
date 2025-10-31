@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddServiceDiscovery();
+
 builder.Services.AddDbContext<InventoryDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -28,17 +30,17 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient<IAuthServiceClient, AuthServiceClient>(client =>
 {
     client.BaseAddress = new Uri("http://authservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient<IProductCatalogClient, ProductCatalogClient>(client =>
 {
     client.BaseAddress = new Uri("http://productservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("notificationservice", client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
-});
+}).AddServiceDiscovery();
 
 
 

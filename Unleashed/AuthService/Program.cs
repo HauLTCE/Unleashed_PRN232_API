@@ -15,6 +15,8 @@ using Unleashed.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddServiceDiscovery();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -33,7 +35,7 @@ builder.Services.AddHttpClient("EmailService", client =>
     {
         client.BaseAddress = new Uri(emailApiUrl);
     }
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -82,7 +84,7 @@ builder.Services.AddAutoMapper(cfg =>
 builder.Services.AddHttpClient("notificationservice", client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
-});
+}).AddServiceDiscovery();
 
 
 builder.AddServiceDefaults();
