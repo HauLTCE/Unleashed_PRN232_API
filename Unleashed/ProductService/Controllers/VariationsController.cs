@@ -11,16 +11,11 @@ namespace ProductService.Controllers
     public class VariationsController : ControllerBase
     {
         private readonly IVariationQueryService _service;
-        private readonly IColorService _colorService;
-        private readonly ISizeService _sizeService;
         private readonly ILogger<VariationsController> _logger;
 
-        public VariationsController(IVariationQueryService service, IColorService colorService,
-            ISizeService sizeService, ILogger<VariationsController> logger)
+        public VariationsController(IVariationQueryService service, ILogger<VariationsController> logger)
         {
             _service = service;
-            _colorService = colorService;
-            _sizeService = sizeService;
             _logger = logger;
         }
 
@@ -85,81 +80,6 @@ namespace ProductService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Search variations failed");
-                return StatusCode(500, "Internal error");
-            }
-        }
-        // ========== COLOR SECTION ==========
-
-        /// <summary>
-        /// GET /api/variations/colors
-        /// </summary>
-        [HttpGet("colors")]
-        public async Task<ActionResult<List<Color>>> GetColors()
-        {
-            try
-            {
-                var colors = await _colorService.GetAllAsync();
-                return Ok(colors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "GET colors failed");
-                return StatusCode(500, "Internal error");
-            }
-        }
-
-        /// <summary>
-        /// GET /api/variations/colors/available
-        /// </summary>
-        [HttpGet("colors/available")]
-        public async Task<ActionResult<List<Color>>> GetAvailableColors([FromQuery] bool onlyActive = false)
-        {
-            try
-            {
-                var colors = await _colorService.GetAvailableAsync(onlyActive);
-                return Ok(colors);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "GET available colors failed");
-                return StatusCode(500, "Internal error");
-            }
-        }
-
-        // ========== SIZE SECTION ==========
-
-        /// <summary>
-        /// GET /api/variations/sizes
-        /// </summary>
-        [HttpGet("sizes")]
-        public async Task<ActionResult<List<Size>>> GetSizes()
-        {
-            try
-            {
-                var sizes = await _sizeService.GetAllAsync();
-                return Ok(sizes);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "GET sizes failed");
-                return StatusCode(500, "Internal error");
-            }
-        }
-
-        /// <summary>
-        /// GET /api/variations/sizes/available
-        /// </summary>
-        [HttpGet("sizes/available")]
-        public async Task<ActionResult<List<Size>>> GetAvailableSizes([FromQuery] bool onlyActive = false)
-        {
-            try
-            {
-                var sizes = await _sizeService.GetAvailableAsync(onlyActive);
-                return Ok(sizes);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "GET available sizes failed");
                 return StatusCode(500, "Internal error");
             }
         }

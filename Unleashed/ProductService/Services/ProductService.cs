@@ -91,13 +91,6 @@ namespace ProductService.Services
                         throw new ArgumentException($"Category with ID {cid} does not exist");
             }
 
-            // 1) Kiểm tra xem sản phẩm đã tồn tại với tên tương tự chưa
-            var existingProduct = await _productRepository.GetByProductNameAsync(dto.ProductName);
-            if (existingProduct != null)
-            {
-                throw new ArgumentException($"Product with name {dto.ProductName} already exists.");
-            }
-
             // 2) Tạo product entity
             var product = _mapper.Map<Product>(dto);
             product.ProductId = Guid.NewGuid();
@@ -105,7 +98,7 @@ namespace ProductService.Services
             product.ProductUpdatedAt = DateTimeOffset.UtcNow;
 
             // 3) Bắt đầu giao dịch thủ công
-            await _productRepository.BeginTransactionAsync();
+            await _productRepository.BeginTransactionAsync(); // Không cần gán vào biến
 
             try
             {
@@ -120,39 +113,54 @@ namespace ProductService.Services
                     await _productCategoryRepository.AddCategoriesToProductAsync(productId, dto.CategoryIds);
                 }
 
-                // 6) Thêm variations cho sản phẩm
+                // 6) Kiểm tra và thêm variations cho sản phẩm
                 if (dto.Variations?.Any() == true)
                 {
+                    var existingVariations = await _variationRepository.GetByProductIdAsync(productId);
+
                     foreach (var vdto in dto.Variations)
                     {
-                        // Kiểm tra tồn tại của Size và Color
-                        if (!vdto.SizeId.HasValue || !vdto.ColorId.HasValue) continue;
+                        if (!vdto.SizeId.HasValue || !vdto.ColorId.HasValue)
+                            continue;
 
                         var size = await _sizeRepository.GetByIdAsync(vdto.SizeId.Value);
                         var color = await _colorRepository.GetByIdAsync(vdto.ColorId.Value);
-                        if (size == null || color == null) continue;
 
-                        var variation = _mapper.Map<Variation>(vdto);
-                        variation.ProductId = productId; // gắn ProductId vào Variation
+                        if (size == null || color == null)
+                            continue;
 
-                        await _variationRepository.CreateAsync(variation);
+                        // Kiểm tra sự trùng lặp của variation trước khi thêm
+                        var existingVariation = existingVariations.FirstOrDefault(v =>
+                            v.SizeId == vdto.SizeId && v.ColorId == vdto.ColorId && v.VariationPrice == vdto.VariationPrice);
+
+                        if (existingVariation == null)
+                        {
+                            var variation = _mapper.Map<Variation>(vdto);
+                            variation.ProductId = productId; // gắn ProductId vào Variation
+                            await _variationRepository.CreateAsync(variation);
+                        }
                     }
                 }
 
                 // 7) Lưu tất cả thay đổi vào cơ sở dữ liệu trong giao dịch
                 await _productRepository.SaveChangesAsync();  // Lưu tất cả thay đổi
 
-                // 8) Trả về DTO sản phẩm đã tạo
+                // 8) Commit giao dịch
+                await _productRepository.CommitTransactionAsync(); // Đảm bảo commit giao dịch nếu có phương thức này
+
+                // 9) Trả về DTO sản phẩm đã tạo
                 return await GetProductByIdAsync(productId);
             }
             catch (Exception ex)
             {
                 // Nếu có lỗi, hủy bỏ giao dịch
-                await _productRepository.SaveChangesAsync(); // Hủy bỏ giao dịch
+                await _productRepository.RollbackTransactionAsync(); // Hủy bỏ giao dịch nếu có lỗi
                 _logger.LogError(ex, "CreateProduct failed, rolling back. ProductId={ProductId}", product.ProductId);
                 throw;
             }
         }
+
+
 
 
         public async Task<ProductDetailDTO?> UpdateProductAsync(Guid id, UpdateProductDTO dto)
