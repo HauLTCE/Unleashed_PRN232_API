@@ -11,10 +11,12 @@ namespace ProductService.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly IProductService _productService;
+        private readonly IProductStatusService _productStatusService;
 
-        public ProductsController(IProductService productService)
+        public ProductsController(IProductService productService, IProductStatusService productStatusService)
         {
             _productService = productService;
+            _productStatusService = productStatusService;
         }
 
         // GET: api/Products
@@ -130,5 +132,28 @@ namespace ProductService.Controllers
         }
 
 
+        /// <summary>
+        /// GET /api/products/statuses
+        /// → Lấy danh sách tất cả ProductStatus (Active, Inactive, ...)
+        /// </summary>
+        [HttpGet("statuses")]
+        public async Task<IActionResult> GetProductStatuses()
+        {
+                var statuses = await _productStatusService.GetAllAsync();
+                return Ok(statuses);
+
+        }
+
+        /// <summary>
+        /// GET /api/products/statuses/{id}
+        /// → Lấy thông tin chi tiết 1 ProductStatus
+        /// </summary>
+        [HttpGet("statuses/{id:int}")]
+        public async Task<IActionResult> GetProductStatusById(int id)
+        {
+                var status = await _productStatusService.GetByIdAsync(id);
+                if (status == null) return NotFound();
+                return Ok(status);
+        }
     }
 }
