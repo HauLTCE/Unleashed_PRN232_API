@@ -45,6 +45,10 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IBrandService, BrandService>();
 builder.Services.AddScoped<IVariationQueryService, VariationService>();
 builder.Services.AddScoped<IFilterService, FilterService>();
+builder.Services.AddScoped<IColorService, ColorService>();
+builder.Services.AddScoped<ISizeService, SizeService>();
+builder.Services.AddScoped<IProductStatusService, ProductStatusService>();
+
 
 builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
@@ -53,7 +57,7 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IBrandRepository, BrandRepository>();
 builder.Services.AddScoped<ISizeRepository, SizeRepository>();
 builder.Services.AddScoped<IColorRepository, ColorRepository>();
-
+builder.Services.AddScoped<IProductStatusRepository, ProductStatusRepository>();
 
 
 // Add services to the container.
