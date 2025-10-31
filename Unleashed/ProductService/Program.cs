@@ -9,6 +9,8 @@ using ProductService.Services.IServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddServiceDiscovery();
+
 builder.Services.AddDbContext<ProductDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -28,17 +30,17 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient("reviewservice", client =>
 {
     client.BaseAddress = new Uri("http://reviewservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("inventoryservice", client =>
 {
     client.BaseAddress = new Uri("http://inventoryservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("discountservice", client =>
 {
     client.BaseAddress = new Uri("http://discountservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddScoped<IProductService, ProductServiceImpl>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();

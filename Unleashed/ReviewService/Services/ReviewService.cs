@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using ReviewService.Clients;
 using ReviewService.Clients.Interfaces;
 using ReviewService.DTOs.External;
 using ReviewService.DTOs.Internal;
@@ -21,6 +22,7 @@ namespace ReviewService.Services
         private readonly IMapper _mapper;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IAuthServiceClient _authServiceClient;
+        private readonly IProductServiceClient _productServiceClient;
         private readonly ILogger<ReviewServicee> _logger;
 
         public ReviewServicee(
@@ -29,6 +31,7 @@ namespace ReviewService.Services
             IMapper mapper,
             IHttpClientFactory httpClientFactory,
             IAuthServiceClient authServiceClient,
+            IProductServiceClient productServiceClient,
             ILogger<ReviewServicee> logger)
         {
             _reviewRepository = reviewRepository;
@@ -36,6 +39,7 @@ namespace ReviewService.Services
             _mapper = mapper;
             _httpClientFactory = httpClientFactory;
             _authServiceClient = authServiceClient;
+            _productServiceClient = productServiceClient;
             _logger = logger;
         }
 
@@ -263,9 +267,90 @@ namespace ReviewService.Services
             return true;
         }
 
-        public Task<PagedResult<UserReviewHistoryDto>> GetReviewsByUserIdAsync(Guid userId, int page, int size)
+        public async Task<PagedResult<UserReviewHistoryDto>> GetReviewsByUserIdAsync(Guid userId, int page, int size)
         {
-            throw new NotImplementedException();
+
+            var pagedReviews = await _reviewRepository.GetReviewsByUserIdAsync(userId, page, size);
+            if (!pagedReviews.Items.Any())
+            {
+                return new PagedResult<UserReviewHistoryDto>(new List<UserReviewHistoryDto>(), 0);
+            }
+
+
+            var productIds = pagedReviews.Items.Where(r => r.ProductId.HasValue).Select(r => r.ProductId.Value).Distinct();
+
+            var productDetails = await _productServiceClient.GetProductsByIdsAsync(productIds);
+            var productDetailsMap = productDetails.ToDictionary(p => p.ProductId);
+
+            var dtos = new List<UserReviewHistoryDto>();
+            foreach (var review in pagedReviews.Items)
+            {
+                var rootComment = await _commentRepository.FindRootCommentByReviewIdAsync(review.ReviewId);
+                productDetailsMap.TryGetValue(review.ProductId ?? Guid.Empty, out var product);
+
+                dtos.Add(new UserReviewHistoryDto
+                {
+                    Id = review.ReviewId,
+                    ReviewRating = review.ReviewRating,
+                    ProductId = review.ProductId?.ToString(),
+                    ProductName = product?.ProductName,
+                    ProductImageUrl = product?.ProductImageUrl,
+                    CommentContent = rootComment?.CommentContent,
+                    CommentCreatedAt = rootComment?.CommentCreatedAt
+                });
+            }
+
+            return new PagedResult<UserReviewHistoryDto>(dtos, pagedReviews.TotalCount);
         }
+
+        public async Task<PagedResult<DashboardReviewDto>> GetDashboardReviewsAsync(int page, int size)
+        {
+            var pagedReviews = await _reviewRepository.GetRecentReviewsAsync(page, size);
+            if (!pagedReviews.Items.Any())
+            {
+                return new PagedResult<DashboardReviewDto>(new List<DashboardReviewDto>(), 0);
+            }
+
+            var userIds = pagedReviews.Items.Where(r => r.UserId.HasValue).Select(r => r.UserId.Value).Distinct();
+            var productIds = pagedReviews.Items.Where(r => r.ProductId.HasValue).Select(r => r.ProductId.Value).Distinct();
+
+            var usersTask = _authServiceClient.GetUsersByIdsAsync(userIds);
+            var productsTask = _productServiceClient.GetProductsByIdsAsync(productIds);
+
+            await Task.WhenAll(usersTask, productsTask);
+
+            var usersMap = usersTask.Result.ToDictionary(u => u.Id);
+            var productsMap = productsTask.Result.ToDictionary(p => p.ProductId);
+
+            var dtos = new List<DashboardReviewDto>();
+            foreach (var review in pagedReviews.Items)
+            {
+                // Find the first comment associated with the review, which is the main review text.
+                var rootComment = review.Comments.OrderBy(c => c.CommentId).FirstOrDefault();
+
+                usersMap.TryGetValue(review.UserId ?? Guid.Empty, out var user);
+                productsMap.TryGetValue(review.ProductId ?? Guid.Empty, out var product);
+
+                dtos.Add(new DashboardReviewDto
+                {
+                    ReviewId = review.ReviewId,
+                    CommentId = rootComment?.CommentId ?? 0,
+                    ProductId = review.ProductId ?? Guid.Empty,
+                    UserFullname = user?.Username,
+                    UserImage = user?.UserImage,
+                    CommentCreatedAt = rootComment?.CommentCreatedAt ?? DateTimeOffset.MinValue,
+                    CommentContent = rootComment?.CommentContent,
+                    ReviewRating = review.ReviewRating,
+                    ProductName = product?.ProductName,
+                    VariationImage = product?.ProductImageUrl,
+                    ParentCommentContent = null, // Set to null for MVP
+                    IsMaxReply = false // Set to false for MVP
+                });
+            }
+
+            return new PagedResult<DashboardReviewDto>(dtos, pagedReviews.TotalCount);
+        }
+
+
     }
 }

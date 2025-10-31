@@ -7,8 +7,39 @@ using ReviewService.Services.Interfaces;
 using ReviewService.Middleware;
 using ReviewService.Clients.Interfaces;
 using ReviewService.Clients;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddServiceDiscovery();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        // 1. Validates that the token was signed by the key we specified.
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+
+        // 2. Set these to 'false' because don't have issuer or audience.
+        ValidateIssuer = false,
+        ValidateAudience = false,
+
+        // 3. Validates that the token has not expired.
+        ValidateLifetime = true,
+
+        // 4. Sets a grace period for token expiration to account for clock differences.
+        // TimeSpan.Zero means no grace period.
+        ClockSkew = TimeSpan.Zero
+    };
+});
 
 builder.Services.AddDbContext<ReviewDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -24,31 +55,28 @@ builder.Services.AddCors(options =>
         });
 });
 
-builder.Services.AddHttpClient("authservice", client =>
+builder.Services.AddHttpClient<IAuthServiceClient, AuthServiceClient>(client =>
 {
     client.BaseAddress = new Uri("http://authservice");
-});
+}).AddServiceDiscovery();
 
-builder.Services.AddHttpClient("productservice", client =>
+builder.Services.AddHttpClient<IProductServiceClient, ProductServiceClient>(client =>
 {
     client.BaseAddress = new Uri("http://productservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("orderservice", client =>
 {
     client.BaseAddress = new Uri("http://orderservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("notificationservice", client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
-});
+}).AddServiceDiscovery();
 
-//
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
-
-builder.Services.AddScoped<IAuthServiceClient, AuthServiceClient>();
 builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewServicee>();
 
@@ -56,22 +84,17 @@ builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddMaps(typeof(Program).Assembly);
 });
-//
-
-
-
-// Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -81,6 +104,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

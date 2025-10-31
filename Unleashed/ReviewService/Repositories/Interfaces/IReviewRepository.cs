@@ -19,6 +19,7 @@ namespace ReviewService.Repositories.Interfaces
         Task<PagedResult<Review>> GetTopLevelReviewsByProductIdAsync(Guid productId, int page, int size);
         Task<PagedResult<Comment>> GetChildCommentsPaginatedAsync(int commentId, int page, int size);
         Task<PagedResult<Review>> GetReviewsByUserIdAsync(Guid userId, int page, int size);
+        Task<PagedResult<Review>> GetRecentReviewsAsync(int page, int size);
 
     }
 }

@@ -109,5 +109,18 @@ namespace ProductService.Repositories
             return await _context.Products
                                  .FirstOrDefaultAsync(p => p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
         }
+
+        public async Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<Guid> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return Enumerable.Empty<Product>();
+            }
+
+            return await _context.Products
+                .Include(p => p.Variations.OrderBy(v => v.VariationId))
+                .Where(p => ids.Contains(p.ProductId))
+                .ToListAsync();
+        }
     }
 }

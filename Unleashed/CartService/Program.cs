@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddServiceDiscovery();
+
 builder.Services.AddDbContext<CartDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -26,17 +28,17 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient("productservice", client =>
 {
     client.BaseAddress = new Uri("http://productservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("inventoryservice", client =>
 {
     client.BaseAddress = new Uri("http://inventoryservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("discountservice", client =>
 {
     client.BaseAddress = new Uri("http://discountservice");
-});
+}).AddServiceDiscovery();
 
 
 builder.Services.AddAutoMapper(cfg =>

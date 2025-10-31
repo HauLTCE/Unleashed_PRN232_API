@@ -6,5 +6,7 @@ namespace AuthService.Repositories.IRepositories
     {
         Task<User?> GetByUsername(string username);
         Task<User?> GetByEmail(string email);
+
+        Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids);
     }
 }

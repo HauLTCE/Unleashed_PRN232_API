@@ -14,6 +14,8 @@ using OrderService.Clients.IClients;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddServiceDiscovery();
+
 builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddCors(options =>
@@ -56,7 +58,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddHttpClient("authservice", client =>
 {
     client.BaseAddress = new Uri("http://authservice");
-});
+}).AddServiceDiscovery();
 
 string? productApiUrl = builder.Configuration["ServiceUrls:ProductApiBase"];
 if (string.IsNullOrEmpty(productApiUrl))
@@ -64,11 +66,10 @@ if (string.IsNullOrEmpty(productApiUrl))
     throw new ArgumentNullException("ServiceUrls:ProductApiBase is not configured.");
 }
 
-
 builder.Services.AddHttpClient<IProductApiClient, ProductApiClient>(client =>
 {
     client.BaseAddress = new Uri(productApiUrl);
-});
+}).AddServiceDiscovery();
 
 string? inventoryApiUrl = builder.Configuration["ServiceUrls:InventoryApiBase"];
 if (string.IsNullOrEmpty(inventoryApiUrl))
@@ -80,22 +81,22 @@ if (string.IsNullOrEmpty(inventoryApiUrl))
 builder.Services.AddHttpClient<IInventoryApiClient, InventoryApiClient>(client =>
 {
     client.BaseAddress = new Uri(inventoryApiUrl);
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("discountservice", client =>
 {
     client.BaseAddress = new Uri("http://discountservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("notificationservice", client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("cartservice", client =>
 {
     client.BaseAddress = new Uri("http://cartservice");
-});
+}).AddServiceDiscovery();
 
 
 

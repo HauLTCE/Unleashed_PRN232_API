@@ -17,5 +17,6 @@ namespace AuthService.Services.IServices
         Task<UserDTO?> CreateUser(CreateExternalUserDTO createUserDTO);
         Task<bool> UpdateUser(Guid id,UpdateUserDTO updateUserDTO);
         Task<bool> DeleteUser(Guid id);
+        Task<IEnumerable<UserSummaryDTO>> GetUsersByIdsAsync(IEnumerable<Guid> ids);
     }
 }

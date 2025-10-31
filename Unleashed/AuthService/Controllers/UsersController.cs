@@ -157,5 +157,20 @@ namespace AuthService.Controllers
 
             return NoContent();
         }
+
+        // POST: api/users/batch
+        [HttpPost("batch")]
+        [ProducesResponseType(typeof(IEnumerable<UserSummaryDTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<IEnumerable<UserSummaryDTO>>> GetUsersByIds([FromBody] IEnumerable<Guid> userIds)
+        {
+            if (userIds == null || !userIds.Any())
+            {
+                return BadRequest("User IDs must be provided.");
+            }
+
+            var users = await _userService.GetUsersByIdsAsync(userIds);
+            return Ok(users);
+        }
     }
 }

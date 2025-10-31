@@ -32,9 +32,19 @@ public partial class ReviewDbContext : DbContext
         {
             entity.HasKey(cp => new { cp.CommentId, cp.CommentParentId });
 
-            entity.HasOne(d => d.Comment).WithMany().HasConstraintName("comment_parent_comment_id_fkey");
+            // This relationship represents the child comment in the pair
+            entity.HasOne(d => d.Comment)
+                  .WithMany()
+                  .HasForeignKey(d => d.CommentId) // Explicitly define the foreign key
+                  .HasConstraintName("comment_parent_comment_id_fkey")
+                  .OnDelete(DeleteBehavior.Cascade); // Keep cascade for this one
 
-            entity.HasOne(d => d.CommentParentNavigation).WithMany().HasConstraintName("comment_parent_comment_parent_id_fkey");
+            // This relationship represents the parent comment in the pair
+            entity.HasOne(d => d.CommentParentNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.CommentParentId) // Explicitly define the foreign key
+                  .HasConstraintName("comment_parent_comment_parent_id_fkey")
+                  .OnDelete(DeleteBehavior.NoAction); // THIS IS THE FIX: Break the cascade cycle
         });
 
         modelBuilder.Entity<Review>(entity =>

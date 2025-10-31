@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddServiceDiscovery();
+
 builder.Services.AddDbContext<DiscountDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -24,12 +26,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient("authservice", client =>
 {
     client.BaseAddress = new Uri("http://authservice");
-});
+}).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("notificationservice", client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
-});
+}).AddServiceDiscovery();
 
 
 builder.Services.AddAutoMapper(cfg =>
