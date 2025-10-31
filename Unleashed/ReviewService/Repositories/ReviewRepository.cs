@@ -59,7 +59,7 @@ namespace ReviewService.Repositories
             return await _context.Reviews.AnyAsync(e => e.ReviewId == id);
         }
 
-        public async Task<bool> ExistsByProductAndOrderAndUserAsync(Guid productId, string orderId, Guid userId)
+        public async Task<bool> ExistsByProductAndOrderAndUserAsync(Guid productId, Guid orderId, Guid userId)
         {
             return await _context.Reviews.AnyAsync(r =>
                 r.ProductId == productId &&

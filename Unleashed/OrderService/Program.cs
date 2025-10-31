@@ -8,6 +8,9 @@ using OrderService.Services;
 using OrderService.Services.Interfaces;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using ProductService.Clients.IClients;
+using OrderService.Clients;
+using OrderService.Clients.IClients;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,14 +58,28 @@ builder.Services.AddHttpClient("authservice", client =>
     client.BaseAddress = new Uri("http://authservice");
 });
 
-builder.Services.AddHttpClient("productservice", client =>
+string? productApiUrl = builder.Configuration["ServiceUrls:ProductApiBase"];
+if (string.IsNullOrEmpty(productApiUrl))
 {
-    client.BaseAddress = new Uri("http://productservice");
+    throw new ArgumentNullException("ServiceUrls:ProductApiBase is not configured.");
+}
+
+
+builder.Services.AddHttpClient<IProductApiClient, ProductApiClient>(client =>
+{
+    client.BaseAddress = new Uri(productApiUrl);
 });
 
-builder.Services.AddHttpClient("inventoryservice", client =>
+string? inventoryApiUrl = builder.Configuration["ServiceUrls:InventoryApiBase"];
+if (string.IsNullOrEmpty(inventoryApiUrl))
 {
-    client.BaseAddress = new Uri("http://inventoryservice");
+    throw new ArgumentNullException("ServiceUrls:InventoryApiBase is not configured.");
+}
+
+
+builder.Services.AddHttpClient<IInventoryApiClient, InventoryApiClient>(client =>
+{
+    client.BaseAddress = new Uri(inventoryApiUrl);
 });
 
 builder.Services.AddHttpClient("discountservice", client =>

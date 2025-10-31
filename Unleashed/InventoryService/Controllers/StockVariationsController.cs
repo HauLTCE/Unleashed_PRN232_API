@@ -1,4 +1,5 @@
-﻿using InventoryService.DTOs.StockVariation;
+﻿using InventoryService.DTOs.External;
+using InventoryService.DTOs.StockVariation;
 using InventoryService.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
@@ -37,6 +38,36 @@ namespace InventoryService.Controllers
             }
 
             return Ok(stockVariation);
+        }
+
+        // GET: api/StockVariations/get-stock-by-variation/1
+        [HttpGet("get-stock-by-variation/{variationId}")]
+        public async Task<ActionResult<Inventory_OrderDto>> GetStockByVariationId(int variationId)
+        {
+            var stockVariation = await _stockVariationService.GetStockByVariationIdAsync(variationId);
+
+            if (stockVariation == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(stockVariation);
+        }
+
+        [HttpPost("get-stock-by-ids")]
+        public async Task<ActionResult<IEnumerable<Inventory_OrderDto>>> GetStockByIds([FromBody] IEnumerable<int> variationIds)
+        {
+            // 1. Check if the input list is empty
+            if (variationIds == null || !variationIds.Any())
+            {
+                return Ok(Enumerable.Empty<Inventory_OrderDto>());
+            }
+
+            // 2. Delegate the batch logic to the service layer
+            var stockVariations = await _stockVariationService.GetStockByVariationIdsAsync([.. variationIds]);
+
+            // 3. Return the list of stock levels
+            return Ok(stockVariations);
         }
 
         // PUT: api/StockVariations/1/2

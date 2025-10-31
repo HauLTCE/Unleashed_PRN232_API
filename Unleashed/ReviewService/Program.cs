@@ -5,6 +5,8 @@ using ReviewService.Repositories.Interfaces;
 using ReviewService.Services;
 using ReviewService.Services.Interfaces;
 using ReviewService.Middleware;
+using ReviewService.Clients.Interfaces;
+using ReviewService.Clients;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +48,7 @@ builder.Services.AddHttpClient("notificationservice", client =>
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 
+builder.Services.AddScoped<IAuthServiceClient, AuthServiceClient>();
 builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewServicee>();
 
