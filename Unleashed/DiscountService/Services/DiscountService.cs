@@ -84,10 +84,17 @@ namespace DiscountService.Services
         private void SetInitialDiscountStatus(Discount discount)
         {
             var now = DateTimeOffset.UtcNow;
-            if (discount.DiscountStartDate <= now && discount.DiscountEndDate > now)
+            
+            if (discount.DiscountEndDate.HasValue && discount.DiscountEndDate <= now)
+            {
+                discount.DiscountStatusId = 3; // EXPIRED
+            }
+            
+            else if (discount.DiscountStartDate.HasValue && discount.DiscountStartDate <= now)
             {
                 discount.DiscountStatusId = 2; // ACTIVE
             }
+            
             else
             {
                 discount.DiscountStatusId = 1; // INACTIVE
@@ -123,7 +130,28 @@ namespace DiscountService.Services
             if (existingDiscount == null) return null;
 
             _mapper.Map(updateDto, existingDiscount);
-            SetInitialDiscountStatus(existingDiscount);
+
+            var now = DateTimeOffset.UtcNow;
+            var userRequestedStatus = updateDto.DiscountStatusId;
+
+            if (userRequestedStatus == 1)
+            {
+                existingDiscount.DiscountStatusId = 1;
+            }
+           
+            else if (userRequestedStatus == 2)
+            {
+                if (existingDiscount.DiscountEndDate.HasValue && existingDiscount.DiscountEndDate < now)
+                {
+                    throw new ArgumentException("Cannot activate an expired discount code.");
+                }
+                existingDiscount.DiscountStatusId = 2;
+            }
+            else if (userRequestedStatus == 3)
+            {
+                throw new ArgumentException("Cannot manually set a discount to 'Expired'. This status is managed by the system.");
+            }
+
             existingDiscount.DiscountUpdatedAt = DateTimeOffset.UtcNow;
 
             _discountRepo.Update(existingDiscount);
