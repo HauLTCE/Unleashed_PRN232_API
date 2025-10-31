@@ -178,7 +178,7 @@ namespace ReviewService.Services
             return results;
         }
 
-        public async Task<bool> CheckReviewExistsAsync(Guid productId, string orderId, Guid userId)
+        public async Task<bool> CheckReviewExistsAsync(Guid productId, Guid orderId, Guid userId)
         {
             return await _reviewRepository.ExistsByProductAndOrderAndUserAsync(productId, orderId, userId);
         }

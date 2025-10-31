@@ -1,9 +1,12 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using OrderService.Clients.IClients;
 using OrderService.Dtos;
+using OrderService.DTOs.ResponesDtos;
 using OrderService.Models;
 using OrderService.Repositories.Interfaces;
 using OrderService.Services.Interfaces;
+using ProductService.Clients.IClients;
 using System.Security.Cryptography;
 
 namespace OrderService.Services
@@ -13,30 +16,53 @@ namespace OrderService.Services
         private readonly IOrderRepository _orderRepository;
         private readonly IOrderStatusRepo _orderStatusRepository;
         private readonly IOrderVariationRepo _orderVariationSingleRepository;
+        private readonly IProductApiClient _productApiClient;
+        private readonly IInventoryApiClient _inventoryApiClient;
         private readonly IMapper _mapper;
-
-        // Giả định đã inject các service khác (cần được bạn tạo ra)
-        // private readonly IStockService _stockService;
-        // private readonly IEmailService _emailService;
-        // private readonly IPaymentService _paymentService;
-        // private readonly IDiscountService _discountService;
-
-        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationRepo orderVariationSingleRepository, IMapper mapper)
+        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationRepo orderVariationSingleRepository, IProductApiClient productApiClient,IInventoryApiClient inventoryApiClient, IMapper mapper)
         {
             _orderRepository = orderRepository;
             _orderStatusRepository = orderStatusRepository;
             _orderVariationSingleRepository = orderVariationSingleRepository;
+            _productApiClient = productApiClient;
+            _inventoryApiClient = inventoryApiClient;
             _mapper = mapper;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto)
         {
-            // 1. Kiểm tra tồn kho (quan trọng)
-            await CheckStockAvailabilityAsync(createOrderDto);
+            // === PHASE 1: VALIDATION (Get data from other APIs) ===
+
+            // Get all variation IDs to fetch data in one batch
+            var variationIds = createOrderDto.OrderVariations
+                .Select(v => v.VariationId)
+                .ToList();
+
+          
+                var variationDetails = await _productApiClient.GetDetailsByIdsAsync(variationIds)
+                ?? throw new Exception($"Variation {variationIds} not found.");
+
+
+            // 1B. Check stock from the Inventory API
+            // Convert the requested items to a dictionary for O(1) lookups
+            var requestedQuantities = createOrderDto.OrderVariations
+                .ToDictionary(ov => ov.VariationId, ov => ov.Quantity);
+
+            var currentStock = await _inventoryApiClient.GetStockByIdsAsync(variationIds);
+
+            foreach (var stockItem in currentStock)
+            {
+                // Now this lookup is O(1)
+                if (requestedQuantities.TryGetValue(stockItem.VariationId, out int? requestedQuantity))
+                {
+                    if (requestedQuantity > stockItem.TotalQuantity)
+                    {
+                        throw new Exception($"Not enough stock for Variation {stockItem.VariationId}. Requested: {requestedQuantity}, Available: {stockItem.TotalQuantity}.");
+                    }
+                }
+            }
 
             var order = _mapper.Map<Order>(createOrderDto);
-
-            order.OrderVariations = [];
 
             // 2. Thiết lập các giá trị mặc định cho đơn hàng
             order.OrderId = Guid.NewGuid();
@@ -51,23 +77,7 @@ namespace OrderService.Services
 
             await _orderRepository.CreateAsync(order);
 
-           
-            var groupedItems = createOrderDto.OrderVariations
-            .GroupBy(dto => dto.VariationId) 
-            .Select(group => new
-            {
-                RepresentingDto = group.First(),
-                Total = group.Sum(dto => dto.VariationPriceAtPurchase)
-            });
-
-            foreach (var item in groupedItems)
-            {
-                var ovs = _mapper.Map<OrderVariation>(item.RepresentingDto);
-                ovs.OrderId = order.OrderId;
-                ovs.VariationPriceAtPurchase = item.Total; 
-
-                await _orderVariationSingleRepository.CreateAsync(ovs);
-            }
+ 
 
             // 5. Xử lý thanh toán
             // var paymentResult = await _paymentService.ProcessPayment(order, createOrderDto.PaymentMethodId);
@@ -77,9 +87,6 @@ namespace OrderService.Services
             // await _stockService.ReserveStockForOrderAsync(order);
 
             await _orderRepository.SaveAsync();
-
-            // 7. Gửi email xác nhận
-            // await _emailService.SendOrderConfirmationEmailAsync(order);
 
             return _mapper.Map<OrderDto>(await _orderRepository.GetOrderDetailsByIdAsync(order.OrderId));
         }

@@ -69,7 +69,7 @@ namespace ReviewService.Controllers
 
         // GET: api/reviews/check-exists
         [HttpGet("check-exists")]
-        public async Task<ActionResult<bool>> CheckReviewExists([FromQuery] Guid productId, [FromQuery] string orderId, [FromQuery] Guid userId)
+        public async Task<ActionResult<bool>> CheckReviewExists([FromQuery] Guid productId, [FromQuery] Guid orderId, [FromQuery] Guid userId)
         {
             var exists = await _reviewService.CheckReviewExistsAsync(productId, orderId, userId);
             return Ok(exists);

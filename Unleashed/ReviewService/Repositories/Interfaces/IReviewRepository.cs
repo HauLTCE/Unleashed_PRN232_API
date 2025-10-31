@@ -15,7 +15,7 @@ namespace ReviewService.Repositories.Interfaces
         Task<bool> ExistsAsync(int id);
 
 
-        Task<bool> ExistsByProductAndOrderAndUserAsync(Guid productId, string orderId, Guid userId);
+        Task<bool> ExistsByProductAndOrderAndUserAsync(Guid productId, Guid orderId, Guid userId);
         Task<PagedResult<Review>> GetTopLevelReviewsByProductIdAsync(Guid productId, int page, int size);
         Task<PagedResult<Comment>> GetChildCommentsPaginatedAsync(int commentId, int page, int size);
         Task<PagedResult<Review>> GetReviewsByUserIdAsync(Guid userId, int page, int size);

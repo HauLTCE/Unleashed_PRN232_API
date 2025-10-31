@@ -12,7 +12,7 @@ namespace ReviewService.DTOs.Review
 
         [Required]
         [StringLength(255)]
-        public string? OrderId { get; set; }
+        public Guid OrderId { get; set; }
 
         [Required]
         [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5.")]

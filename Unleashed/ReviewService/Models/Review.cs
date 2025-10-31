@@ -21,7 +21,7 @@ public partial class Review
 
     [Column("order_id")]
     [StringLength(255)]
-    public string? OrderId { get; set; }
+    public Guid OrderId { get; set; }
 
     [Column("review_rating")]
     public int? ReviewRating { get; set; }

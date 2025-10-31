@@ -82,7 +82,7 @@ namespace OrderService.Controllers
         // [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto createOrderDto)
         {
-            //if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             //// Gán UserId của người dùng đang đăng nhập
             //var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -90,8 +90,9 @@ namespace OrderService.Controllers
             //{
             //    return Unauthorized();
             //}
+            //createOrderDto.UserId = Guid.Parse(userIdString);
             createOrderDto.UserId = Guid.Parse("910FF8D2-05BE-4F7B-9E8C-B053FBF6F1F6");
-
+            
             try
             {
                 var order = await _orderService.CreateOrderAsync(createOrderDto);

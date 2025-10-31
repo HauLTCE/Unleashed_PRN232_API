@@ -2,7 +2,7 @@
 {
     public class ReviewEligibilityDto
     {
-        public string OrderId { get; set; }
+        public Guid OrderId { get; set; }
         public DateTimeOffset OrderDate { get; set; }
     }
 }

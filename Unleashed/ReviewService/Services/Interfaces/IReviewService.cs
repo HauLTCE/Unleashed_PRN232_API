@@ -17,6 +17,6 @@ namespace ReviewService.Services.Interfaces
         Task<PagedResult<ProductReviewDto>> GetRepliesForCommentAsync(int commentId, int page, int size);
         Task<PagedResult<UserReviewHistoryDto>> GetReviewsByUserIdAsync(Guid userId, int page, int size);
         Task<IEnumerable<ReviewEligibilityDto>> GetReviewEligibilityAsync(Guid productId, Guid userId);
-        Task<bool> CheckReviewExistsAsync(Guid productId, string orderId, Guid userId);
+        Task<bool> CheckReviewExistsAsync(Guid productId, Guid orderId, Guid userId);
     }
 }

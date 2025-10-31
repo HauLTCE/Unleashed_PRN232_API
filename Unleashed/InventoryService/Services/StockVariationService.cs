@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using InventoryService.DTOs.External;
 using InventoryService.DTOs.StockVariation;
 using InventoryService.Models;
 using InventoryService.Repositories.Interfaces;
@@ -70,5 +71,53 @@ namespace InventoryService.Services
             await _stockVariationRepository.DeleteAsync(stockVariationToDelete);
             return true;
         }
+
+        public async Task<Inventory_OrderDto?> GetStockByVariationIdAsync(int variationId)
+        {
+           var stockList = await _stockVariationRepository.GetByVariationIdAsync(variationId);
+            if (stockList == null)
+            {              
+                return new Inventory_OrderDto
+                {
+                    VariationId = variationId,
+                    TotalQuantity = 0
+                };
+            }
+            var totalQuantity = stockList.Sum(ov => ov.StockQuantity);
+            Inventory_OrderDto inventory_OrderDto = new()
+            {
+                VariationId = variationId,
+                TotalQuantity = totalQuantity
+            };
+            return inventory_OrderDto;
+        }
+
+        public async Task<IEnumerable<Inventory_OrderDto?>> GetStockByVariationIdsAsync(List<int> variationIds)
+        {
+            if (variationIds == null || variationIds.Count == 0)
+                return [];
+
+            var semaphore = new SemaphoreSlim(10); 
+
+            var stockTasks = variationIds.Select(async id =>
+            {
+                await semaphore.WaitAsync();
+                try
+                {
+                    return await GetStockByVariationIdAsync(id);
+                }
+                catch (Exception ex)
+                {
+                    return null;
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            return await Task.WhenAll(stockTasks);
+        }
+
     }
 }

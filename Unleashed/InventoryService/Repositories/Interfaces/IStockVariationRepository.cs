@@ -8,6 +8,7 @@ namespace InventoryService.Repositories.Interfaces
     {
         Task<IEnumerable<StockVariation>> GetAllAsync();
         Task<StockVariation?> GetByIdAsync(int stockId, int variationId);
+        Task<List<StockVariation>> GetByVariationIdAsync(int variationId);
         Task<List<StockVariation>> GetByIdsAsync(IEnumerable<int> variationIds);
         Task<StockVariation> AddAsync(StockVariation stockVariation);
         Task UpdateAsync(StockVariation stockVariation);
