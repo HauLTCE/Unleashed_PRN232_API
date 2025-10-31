@@ -1,5 +1,6 @@
 ﻿using InventoryService.DTOs.Stock;
 using InventoryService.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ namespace InventoryService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "ADMIN,STAFF")]
     public class StocksController : ControllerBase
     {
         private readonly IStockService _stockService;

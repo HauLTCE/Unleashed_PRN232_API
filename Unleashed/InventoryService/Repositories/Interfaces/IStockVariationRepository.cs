@@ -15,5 +15,6 @@ namespace InventoryService.Repositories.Interfaces
         Task UpdateRangeAsync(IEnumerable<StockVariation> stockVariations);
         Task DeleteAsync(StockVariation stockVariation);
         Task<bool> ExistsAsync(int stockId, int variationId);
+        Task<List<StockVariation>> GetByStockIdAsync(int stockId);
     }
 }

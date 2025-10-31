@@ -2,15 +2,16 @@
 {
     public class VariationDto
     {
-        public int Id { get; set; }
+        public int VariationId { get; set; }
         public Guid? ProductId { get; set; }
-        public string? ProductName { get; set; }
-        public string? BrandName { get; set; }
-        public string? CategoryName { get; set; }
+        public int? SizeId { get; set; }
+        public int? ColorId { get; set; }
         public string? VariationImage { get; set; }
         public decimal? Price { get; set; }
-        public string? ColorName { get; set; }
-        public string? ColorHexCode { get; set; }
-        public string? SizeName { get; set; }
+
+        public SizeDto? Size { get; set; }
+        public ColorDto? Color { get; set; }
+
+        public ProductDto? Product { get; set; }
     }
 }

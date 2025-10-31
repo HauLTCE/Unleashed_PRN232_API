@@ -14,5 +14,6 @@ namespace InventoryService.Services.Interfaces
         Task<StockVariationDto?> CreateStockVariationAsync(CreateStockVariationDto stockVariationDto);
         Task<bool> UpdateStockVariationAsync(int stockId, int variationId, UpdateStockVariationDto stockVariationDto);
         Task<bool> DeleteStockVariationAsync(int stockId, int variationId);
+        Task<IEnumerable<StockVariationDto>> GetStockVariationsByStockIdAsync(int stockId);
     }
 }
