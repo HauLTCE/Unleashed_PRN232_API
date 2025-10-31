@@ -16,7 +16,9 @@ namespace DiscountService.Profiles
             CreateMap<DiscountDto,Discount>();
             CreateMap<Discount,CreateDiscountDto>();
             CreateMap<Discount, UpdateDiscountDto>();
-            CreateMap<Discount, DiscountViewDto>();
+            CreateMap<Discount, DiscountViewDto>()
+                .ForMember(d => d.DiscountStatusName, opt => opt.MapFrom(s => s.DiscountStatus!.DiscountStatusName ?? string.Empty))
+                .ForMember(d => d.DiscountTypeName, opt => opt.MapFrom(s => s.DiscountType!.DiscountTypeName ?? string.Empty));
         }
     }
 }
