@@ -124,8 +124,10 @@ namespace ProductService.Controllers
                 return Ok(productInfo);
             }
             catch (Exception ex)
-            {      
+            {
                 return StatusCode(500, "Internal server error");
             }
         }
+
+    }
 }
