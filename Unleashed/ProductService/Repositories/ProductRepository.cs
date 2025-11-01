@@ -108,8 +108,9 @@ namespace ProductService.Repositories
         }
         public async Task<Product?> GetByProductNameAsync(string productName)
         {
+            var normalizedName = productName.ToLower();
             return await _context.Products
-                                 .FirstOrDefaultAsync(p => p.ProductName.Equals(productName, StringComparison.OrdinalIgnoreCase));
+                                 .FirstOrDefaultAsync(p => p.ProductName.ToLower() == normalizedName);
         }
 
         public async Task<IEnumerable<Product>> GetByIdsAsync(IEnumerable<Guid> ids)
@@ -124,5 +125,6 @@ namespace ProductService.Repositories
                 .Where(p => ids.Contains(p.ProductId))
                 .ToListAsync();
         }
+
     }
 }
