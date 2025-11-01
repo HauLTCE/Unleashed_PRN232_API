@@ -9,7 +9,16 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
         builder.AddServiceDefaults();
-
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowReactApp",
+                policy =>
+                {
+                    policy.WithOrigins(builder.Configuration["FrontEnd"])
+                          .AllowAnyMethod()
+                          .WithHeaders("Content-Type", "Authorization");
+                });
+        });
         // Add services to the container.
 
         builder.Services.AddControllers();
