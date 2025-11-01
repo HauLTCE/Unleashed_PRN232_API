@@ -1,27 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
 
 namespace NotificationService.Models;
 
-[Keyless]
 [Table("notification_user")]
 public partial class NotificationUser
 {
-    [Column("notification_id")]
-    public int? NotificationId { get; set; }
+    [Key]
+    [Column("notification_id", Order = 0)]
+    public int NotificationId { get; set; }
 
-    [Column("user_id")]
-    public Guid? UserId { get; set; }
+    [Key]
+    [Column("user_id", Order = 1)]
+    public Guid UserId { get; set; }
 
     [Column("is_notification_viewed")]
-    public bool? IsNotificationViewed { get; set; }
+    public bool? IsNotificationViewed { get; set; } = false;
 
     [Column("is_notification_deleted")]
-    public bool? IsNotificationDeleted { get; set; }
+    public bool? IsNotificationDeleted { get; set; } = false;
 
-    [ForeignKey("NotificationId")]
+    [ForeignKey(nameof(NotificationId))]
     public virtual Notification? Notification { get; set; }
 }

@@ -26,7 +26,13 @@ public partial class NotificationDbContext : DbContext
 
         modelBuilder.Entity<NotificationUser>(entity =>
         {
-            entity.HasOne(d => d.Notification).WithMany().HasConstraintName("notification_user_notification_id_fkey");
+            entity.HasKey(e => new { e.NotificationId, e.UserId })
+                  .HasName("notification_user_pkey");
+       
+            entity.HasOne(d => d.Notification)
+                  .WithMany(n => n.NotificationUsers) 
+                  .HasForeignKey(d => d.NotificationId)
+                  .HasConstraintName("notification_user_notification_id_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

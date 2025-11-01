@@ -31,4 +31,6 @@ public partial class Notification
 
     [Column("notification_updated_at")]
     public DateTimeOffset? NotificationUpdatedAt { get; set; }
+    public virtual ICollection<NotificationUser> NotificationUsers { get; set; } = [];
+
 }

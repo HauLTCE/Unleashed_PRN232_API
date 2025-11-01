@@ -14,6 +14,7 @@ namespace AuthService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UsersController : ControllerBase //lacking a self modification. self mods check for if the user is the same one as the one being mod. if yes, allow, if no, fuck no
     {
         private readonly IUserService _userService;
@@ -171,6 +172,15 @@ namespace AuthService.Controllers
 
             var users = await _userService.GetUsersByIdsAsync(userIds);
             return Ok(users);
+        }
+
+        [HttpGet("get-customer")]
+        [ProducesResponseType(typeof(IEnumerable<Guid>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<IEnumerable<Guid>>> GetCustomerIds()
+        {
+            var userIds = await _userService.GetCustomerIds();
+            return Ok(userIds);
         }
     }
 }

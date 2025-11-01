@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using NotificationService.Clients;
+using NotificationService.Clients.IClients;
 using NotificationService.Data;
 using NotificationService.Profiles;
 using NotificationService.Repositories;
@@ -68,6 +70,11 @@ builder.Services.AddScoped<INotificationService, NotiService>();
 builder.Services.AddScoped<INotificationUserRepository, NotificationUserRepository>();
 builder.Services.AddScoped<INotificationUserService, NotiUserService>();
 
+
+builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>("authservice", client =>
+{
+    client.BaseAddress = new Uri("http://authservice");
+}).AddServiceDiscovery();
 
 // --- API Services ---
 builder.Services.AddControllers();

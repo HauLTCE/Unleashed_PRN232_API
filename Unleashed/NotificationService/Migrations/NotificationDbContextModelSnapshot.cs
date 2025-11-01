@@ -64,6 +64,16 @@ namespace NotificationService.Migrations
 
             modelBuilder.Entity("NotificationService.Models.NotificationUser", b =>
                 {
+                    b.Property<int>("NotificationId")
+                        .HasColumnType("int")
+                        .HasColumnName("notification_id")
+                        .HasColumnOrder(0);
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id")
+                        .HasColumnOrder(1);
+
                     b.Property<bool?>("IsNotificationDeleted")
                         .HasColumnType("bit")
                         .HasColumnName("is_notification_deleted");
@@ -72,15 +82,8 @@ namespace NotificationService.Migrations
                         .HasColumnType("bit")
                         .HasColumnName("is_notification_viewed");
 
-                    b.Property<int?>("NotificationId")
-                        .HasColumnType("int")
-                        .HasColumnName("notification_id");
-
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("user_id");
-
-                    b.HasIndex("NotificationId");
+                    b.HasKey("NotificationId", "UserId")
+                        .HasName("notification_user_pkey");
 
                     b.ToTable("notification_user");
                 });
@@ -88,11 +91,18 @@ namespace NotificationService.Migrations
             modelBuilder.Entity("NotificationService.Models.NotificationUser", b =>
                 {
                     b.HasOne("NotificationService.Models.Notification", "Notification")
-                        .WithMany()
+                        .WithMany("NotificationUsers")
                         .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
                         .HasConstraintName("notification_user_notification_id_fkey");
 
                     b.Navigation("Notification");
+                });
+
+            modelBuilder.Entity("NotificationService.Models.Notification", b =>
+                {
+                    b.Navigation("NotificationUsers");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using NotificationService.Clients.IClients;
 using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.DTOs.NotificationUserDTOs;
 using NotificationService.DTOs.PagedResponse;
@@ -13,12 +15,16 @@ namespace NotificationService.Services
     public class NotiUserService : INotificationUserService
     {
         private readonly INotificationUserRepository _repository;
+        private readonly IAuthApiClient _authApiClient;
         private readonly IMapper _mapper;
+        private readonly ILogger<NotiUserService> _logger;
 
-        public NotiUserService(INotificationUserRepository repository, IMapper mapper)
+        public NotiUserService(INotificationUserRepository repository, IAuthApiClient authApiClient, IMapper mapper, ILogger<NotiUserService> logger)
         {
             _repository = repository;
+            _authApiClient = authApiClient;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<NotificationUserDTO>> GetAll()
@@ -33,29 +39,38 @@ namespace NotificationService.Services
             return _mapper.Map<NotificationUserDTO>(notificationUser);
         }
 
-        public async Task<IEnumerable<NotificationUserDTO>?> Create(CreateNotificationUserDTO createDto)
+        public async Task<IEnumerable<NotificationUserDTO>?> Create(int notificaitonId)
         {
+            var result = new List<NotificationUser>();
+
             try
             {
-                List <NotificationUser> notificationUsers = [];
-                foreach (var createNoti in createDto.UserIds)
-                {
-                    var notificationUser = _mapper.Map<NotificationUser>(createDto);
-                    await _repository.CreateAsync(notificationUser);
-                    notificationUsers.Add(notificationUser);
-                }
+                var userIds = await _authApiClient.GetCustomers();
 
-                if (await _repository.SaveAsync())
+                result = [.. userIds.Select(userId => new NotificationUser
                 {
-                    return _mapper.Map<IEnumerable<NotificationUserDTO>>(notificationUsers);
+                    UserId = userId,
+                    NotificationId = notificaitonId
+                })];
+                _logger.LogInformation(result.Count.ToString());
+                foreach (var item in result)
+                {
+                    _logger.LogInformation(item.ToString());
+                    await _repository.CreateAsync(item);
                 }
-                return null;
+                var saved = await _repository.SaveAsync();
+
+                return saved
+                    ? _mapper.Map<IEnumerable<NotificationUserDTO>>(result)
+                    : null;
             }
             catch (Exception ex)
             {
+                // TODO: log ex
                 return null;
             }
         }
+
 
         public async Task<bool> Update(int notificationId, Guid userId, UpdateNotificationUserDTO updateDto)
         {
@@ -84,30 +99,26 @@ namespace NotificationService.Services
             return await _repository.SaveAsync();
         }
 
-        public async Task<PagedResponse<NotificationUserDTO>> GetNotificationUserByUserIdPagedAsync(Guid userId, int pageNumber, int pageSize, string? searchQuery)
+        public async Task<NotificationUserPagedResponse> GetNotificationUserByUserIdPagedAsync(
+     Guid userId,
+     int pageNumber,
+     int pageSize,
+     string? searchQuery)
         {
-            // 1. Call the repository to get the raw data and total count.
-            //    Notice the repository method is now specific and accepts the parameters.
-            (var notisUser, var totalRecords) = await _repository.GetPagedByUserIdAsync(
-                userId,
-                pageNumber,
-                pageSize,
-                searchQuery
-            );
+            // repository should now return (items, totalCount, unviewCount)
+            (var notisUser, var totalRecords, var unviewCount) =
+                await _repository.GetPagedByUserIdAsync(userId, pageNumber, pageSize, searchQuery);
 
-            // 2. Perform business logic (mapping) in the service layer.
-            var notiUserDtos = _mapper.Map<List<NotificationUserDTO>>(notisUser);
-            // Or manually: var userDtos = users.Select(u => new UserDTO { ... }).ToList();
+            var dtoList = _mapper.Map<List<NotificationUserDTO>>(notisUser);
 
-            // 3. Create the final PagedResponse.
-            var pagedResponse = new PagedResponse<NotificationUserDTO>(
-                notiUserDtos,
+            return new NotificationUserPagedResponse(
+                dtoList,
                 totalRecords,
+                unviewCount,
                 pageNumber,
                 pageSize
             );
-
-            return pagedResponse;
         }
+
     }
 }
