@@ -33,24 +33,21 @@ namespace NotificationService.Migrations
                 name: "notification_user",
                 columns: table => new
                 {
-                    notification_id = table.Column<int>(type: "int", nullable: true),
-                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    notification_id = table.Column<int>(type: "int", nullable: false),
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     is_notification_viewed = table.Column<bool>(type: "bit", nullable: true),
                     is_notification_deleted = table.Column<bool>(type: "bit", nullable: true)
                 },
                 constraints: table =>
                 {
+                    table.PrimaryKey("notification_user_pkey", x => new { x.notification_id, x.user_id });
                     table.ForeignKey(
                         name: "notification_user_notification_id_fkey",
                         column: x => x.notification_id,
                         principalTable: "notification",
-                        principalColumn: "notification_id");
+                        principalColumn: "notification_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_notification_user_notification_id",
-                table: "notification_user",
-                column: "notification_id");
         }
 
         /// <inheritdoc />

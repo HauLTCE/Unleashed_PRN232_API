@@ -159,5 +159,11 @@ namespace AuthService.Services
             var users = await _userRepository.GetByIdsAsync(ids);
             return _mapper.Map<IEnumerable<UserSummaryDTO>>(users);
         }
+
+        public async Task<IEnumerable<Guid>> GetCustomerIds()
+        {
+            var users = await _userRepository.GetByRoleId(2);
+            return [.. users.Select(u=>u.UserId)];
+        }
     }
 }

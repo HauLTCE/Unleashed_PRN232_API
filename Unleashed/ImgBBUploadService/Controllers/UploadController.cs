@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class UploadController : ControllerBase
 {
     private readonly IImgBBUploadService _uploadService;

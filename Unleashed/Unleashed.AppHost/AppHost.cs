@@ -84,6 +84,8 @@ orderService.WithReference(authService)
 discountService.WithReference(authService)
                .WithReference(notificationService);
 
+notificationService.WithReference(authService);
+
 //===========================================================================================================================================
 
 builder.Build().Run();

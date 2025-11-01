@@ -8,5 +8,6 @@ namespace AuthService.Repositories.IRepositories
         Task<User?> GetByEmail(string email);
 
         Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids);
+        Task<IEnumerable<User>> GetByRoleId(int roleId);
     }
 }

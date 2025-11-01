@@ -3,11 +3,13 @@ using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.Services.IServices;
 // Import PagedResponse DTO
 using NotificationService.DTOs.PagedResponse;
+using Microsoft.AspNetCore.Authorization;
 
 namespace NotificationService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationService _notificationService;
@@ -21,6 +23,7 @@ namespace NotificationService.Controllers
         // This endpoint is now updated to support pagination and filtering
         [HttpGet]
         [ProducesResponseType(typeof(PagedResponse<NotificationDTO>), StatusCodes.Status200OK)]
+        [Authorize(Roles ="ADMIN, STAFF")]
         public async Task<ActionResult<PagedResponse<NotificationDTO>>> GetNotifications(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
@@ -57,6 +60,7 @@ namespace NotificationService.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(NotificationDTO), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<ActionResult<NotificationDTO>> PostNotification(CreateNotificationDTO createDto)
         {
             var newNotification = await _notificationService.CreateNotification(createDto);
@@ -89,6 +93,7 @@ namespace NotificationService.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<IActionResult> DeleteNotification(int id)
         {
             var success = await _notificationService.DeleteNotification(id);

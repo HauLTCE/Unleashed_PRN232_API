@@ -1,11 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NotificationService.DTOs.NotificationUserDTOs;
+using NotificationService.DTOs.PagedResponse;
 using NotificationService.Services.IServices;
+using System.Security.Claims;
 
 namespace NotificationService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class NotificationUsersController : ControllerBase
     {
         private readonly INotificationUserService _service;
@@ -18,6 +22,7 @@ namespace NotificationService.Controllers
         // GET: api/NotificationUsers
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<NotificationUserDTO>), StatusCodes.Status200OK)]
+        [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<ActionResult<IEnumerable<NotificationUserDTO>>> GetNotificationUsers()
         {
             var result = await _service.GetAll();
@@ -26,16 +31,17 @@ namespace NotificationService.Controllers
 
         // GET: api/NotificationUsers/userId
         [HttpGet("{userId}")]
-        [ProducesResponseType(typeof(IEnumerable<NotificationUserDTO>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<NotificationUserDTO>>> GetNotificationUsersByUserId(
-            Guid userId,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? searchQuery = null)
+        [ProducesResponseType(typeof(NotificationUserPagedResponse), StatusCodes.Status200OK)]
+        public async Task<ActionResult<NotificationUserPagedResponse>> GetNotificationUsersByUserId(
+        Guid userId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchQuery = null)
         {
-            var result = await _service.GetNotificationUserByUserIdPagedAsync(userId,pageNumber,pageSize,searchQuery);
+            var result = await _service.GetNotificationUserByUserIdPagedAsync(userId, pageNumber, pageSize, searchQuery);
             return Ok(result);
         }
+
 
         // GET: api/NotificationUsers/5/guid
         [HttpGet("{notificationId}/{userId}")]
@@ -53,18 +59,25 @@ namespace NotificationService.Controllers
 
         // POST: api/NotificationUsers
         [HttpPost]
-        [ProducesResponseType(typeof(NotificationUserDTO), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(IEnumerable<NotificationUserDTO>), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<IEnumerable<NotificationUserDTO>>> PostNotificationUser(CreateNotificationUserDTO createDto)
+        [Authorize(Roles = "ADMIN, STAFF")]
+        public async Task<IActionResult> PostNotificationUser([FromQuery] int notificationId)
         {
-            var newRecord = await _service.Create(createDto);
-            if (newRecord == null || newRecord == null)
+            var newRecord = await _service.Create(notificationId);
+
+            if (newRecord == null || !newRecord.Any())
             {
                 return BadRequest("Failed to create the notification user record.");
             }
 
-            return CreatedAtAction(nameof(GetNotificationUser), new { Record = newRecord }, newRecord);
+            return CreatedAtAction(
+                nameof(GetNotificationUsers),  
+                new { notificationId },
+                newRecord                      
+            );
         }
+
 
         // PUT: api/NotificationUsers/5/guid
         [HttpPut("{notificationId}/{userId}")]
@@ -72,6 +85,12 @@ namespace NotificationService.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PutNotificationUser(int notificationId, Guid userId, UpdateNotificationUserDTO updateDto)
         {
+            var claimsUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (claimsUserId != userId.ToString())
+            {
+                return Forbid();
+            }
             var success = await _service.Update(notificationId, userId, updateDto);
             if (!success)
             {
@@ -86,6 +105,12 @@ namespace NotificationService.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteNotificationUser(int notificationId, Guid userId)
         {
+            var claimsUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (claimsUserId != userId.ToString())
+            {
+                return Forbid();
+            }
             var success = await _service.Delete(notificationId, userId);
             if (!success)
             {
