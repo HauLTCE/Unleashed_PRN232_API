@@ -75,7 +75,7 @@ namespace InventoryService.Services
                 var employeeDetails = await _authServiceClient.GetUsersByIdsAsync(employeeIds);
                 if (employeeDetails != null)
                 {
-                    employeesMap = employeeDetails.ToDictionary(e => e.Id);
+                    employeesMap = employeeDetails.ToDictionary(e => e.UserId);
                 }
             }
             catch (Exception ex)
@@ -115,7 +115,7 @@ namespace InventoryService.Services
                 SizeName = variation?.Size?.SizeName,
                 ColorName = variation?.Color?.ColorName,
                 ColorHexCode = variation?.Color?.ColorHexCode,
-                InchargeEmployeeUsername = employee?.Username
+                InchargeEmployeeUsername = employee?.UserUsername
             };
         }
 
@@ -168,7 +168,7 @@ namespace InventoryService.Services
                     {
                         StockId = importDto.StockId,
                         ProviderId = importDto.ProviderId,
-                        InchargeEmployeeId = user.Id,
+                        InchargeEmployeeId = user.UserId,
                         VariationId = item.VariationId,
                         TransactionQuantity = item.Quantity,
                         TransactionTypeId = 1,
