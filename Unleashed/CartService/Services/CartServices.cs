@@ -5,6 +5,7 @@ using CartService.DTOs.Client;
 using CartService.Models;
 using CartService.Repositories.Interfaces;
 using CartService.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 
 namespace CartService.Services
@@ -14,15 +15,18 @@ namespace CartService.Services
         private readonly ICartRepository _cartRepository;
         private readonly IMapper _mapper;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<CartService> _logger;
 
         public CartService(
             ICartRepository cartRepository,
             IMapper mapper,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            ILogger<CartService> logger)
         {
             _cartRepository = cartRepository;
             _mapper = mapper;
             _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
 
         public async Task<List<GroupedCartDTO>> GetFormattedCartByUserIdAsync(Guid userId)
@@ -47,8 +51,8 @@ namespace CartService.Services
                 int stockQuantity = 0;
                 try
                 {
-                    var stockDto = await inventoryClient.GetFromJsonAsync<InventoryDTO>($"api/stock/{cartItem.VariationId}");
-                    stockQuantity = stockDto?.StockQuantity ?? 0;
+                    var stockDto = await inventoryClient.GetFromJsonAsync<InventoryDTO>($"api/stockvariations/get-stock-by-variation/{cartItem.VariationId}");
+                    stockQuantity = stockDto?.TotalQuantity ?? 0;
                 }
                 catch (HttpRequestException) { }
 
@@ -88,11 +92,17 @@ namespace CartService.Services
             int stockQuantity = 0;
             try
             {
-                var stockDto = await inventoryClient.GetFromJsonAsync<InventoryDTO>($"api/stock/{variationId}");
-                stockQuantity = stockDto?.StockQuantity ?? 0;
+                var stockDto = await inventoryClient.GetFromJsonAsync<InventoryDTO>($"api/stockvariations/get-stock-by-variation/{variationId}");
+                stockQuantity = stockDto?.TotalQuantity ?? 0;
             }
-            catch (HttpRequestException)
+            // ++ CHỈNH SỬA: Bắt exception và ghi log chi tiết
+            catch (HttpRequestException ex)
             {
+                // Ghi lại lỗi gốc để giúp debug dễ dàng hơn
+                _logger.LogError(ex, "Failed to connect to InventoryService for variationId {VariationId}. Base Address: {BaseAddress}",
+                    variationId, inventoryClient.BaseAddress);
+
+                // Ném ra exception với thông điệp quen thuộc cho client
                 throw new InvalidOperationException("Could not verify stock for this item. Inventory service is unavailable.");
             }
 
@@ -131,6 +141,45 @@ namespace CartService.Services
             var userCarts = await _cartRepository.GetCartsByUserIdAsync(userId);
             if (!userCarts.Any()) throw new InvalidOperationException("No items in cart to remove.");
             await _cartRepository.DeleteAllByUserIdAsync(userId);
+        }
+    
+
+    public async Task UpdateCartQuantityAsync(Guid userId, int variationId, int newQuantity)
+        {
+            if (newQuantity <= 0)
+            {
+                // Nếu số lượng mới là 0 hoặc âm, hãy xóa sản phẩm
+                await RemoveFromCartAsync(userId, variationId);
+                return;
+            }
+
+            var inventoryClient = _httpClientFactory.CreateClient("inventoryservice");
+            int stockQuantity = 0;
+            try
+            {
+                var stockDto = await inventoryClient.GetFromJsonAsync<InventoryDTO>($"api/StockVariations/get-stock-by-variation/{variationId}");
+                stockQuantity = stockDto?.TotalQuantity ?? 0;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to connect to InventoryService for variationId {VariationId}.", variationId);
+                throw new InvalidOperationException("Could not verify stock for this item. Inventory service is unavailable.");
+            }
+
+            if (newQuantity > stockQuantity)
+            {
+                throw new InvalidOperationException($"Cannot update quantity to {newQuantity}. Only {stockQuantity} item(s) available in stock.");
+            }
+
+            var existingCartItem = await _cartRepository.FindAsync((userId, variationId));
+            if (existingCartItem == null)
+            {
+                throw new KeyNotFoundException("Item not found in cart to update.");
+            }
+
+            existingCartItem.CartQuantity = newQuantity;
+            _cartRepository.Update(existingCartItem);
+            await _cartRepository.SaveAsync();
         }
     }
 }

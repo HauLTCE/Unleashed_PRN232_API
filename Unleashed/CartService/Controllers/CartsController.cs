@@ -96,5 +96,29 @@ namespace CartService.Controllers
                 return BadRequest($"Error removing all items from cart: {e.Message}");
             }
         }
+
+        [HttpPut("{variationId}")]
+        public async Task<IActionResult> UpdateCartItemQuantity(int variationId, [FromQuery] int quantity)
+        {
+            if (quantity <= 0)
+            {
+                return BadRequest("New quantity must be greater than zero. To remove, use the DELETE endpoint.");
+            }
+
+            try
+            {
+                var userId = GetCurrentUserId();
+                await _cartService.UpdateCartQuantityAsync(userId, variationId, quantity);
+                return Ok("Successfully updated item quantity.");
+            }
+            catch (KeyNotFoundException e)
+            {
+                return NotFound(e.Message);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
     }
 }

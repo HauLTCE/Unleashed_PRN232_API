@@ -13,5 +13,6 @@ namespace CartService.Services.Interfaces
         Task AddToCartAsync(Guid userId, int variationId, int quantity);
         Task RemoveFromCartAsync(Guid userId, int variationId);
         Task RemoveAllFromCartAsync(Guid userId);
+        Task UpdateCartQuantityAsync(Guid userId, int variationId, int newQuantity);
     }
     }
