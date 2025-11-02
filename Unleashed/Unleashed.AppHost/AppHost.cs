@@ -72,6 +72,7 @@ inventoryService.WithReference(authService)
                 .WithReference(notificationService);
 
 cartService.WithReference(productService)
+           .WithReference(inventoryService)
            .WithReference(discountService);
 
 orderService.WithReference(authService)

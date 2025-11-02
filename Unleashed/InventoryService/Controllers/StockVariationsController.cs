@@ -45,7 +45,7 @@ namespace InventoryService.Controllers
 
         // GET: api/StockVariations/get-stock-by-variation/1
         [HttpGet("get-stock-by-variation/{variationId}")]
-        [Authorize(Roles = "ADMIN,STAFF")]
+        //[Authorize(Roles = "ADMIN,STAFF")]
         public async Task<ActionResult<Inventory_OrderDto>> GetStockByVariationId(int variationId)
         {
             var stockVariation = await _stockVariationService.GetStockByVariationIdAsync(variationId);

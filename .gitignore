@@ -24,3 +24,5 @@ Unleashed/Unleashed.AppHost/obj/
 Unleashed/Unleashed.ServiceDefaults/obj/
 Unleashed/Unleashed.ServiceDefaults/bin/
 .vs/
+Unleashed/CartService/Migrations/20251101020908_init.cs
+*.cs

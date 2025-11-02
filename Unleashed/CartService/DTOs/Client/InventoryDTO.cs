@@ -2,6 +2,7 @@
 {
     public class InventoryDTO
     {
-        public int StockQuantity { get; set; }
+        public int VariationId { get; set; }
+        public int? TotalQuantity { get; set; }
     }
 }
