@@ -37,10 +37,15 @@ namespace ProductService.Repositories
         }
 
         public async Task<Variation?> GetByIdAsync(int id)
-            => await _context.Variations
-                .Include(v => v.Size)
-                .Include(v => v.Color)
-                .FirstOrDefaultAsync(v => v.VariationId == id);
+        => await _context.Variations
+            .Include(v => v.Size)
+            .Include(v => v.Color)
+            .Include(v => v.Product)
+                .ThenInclude(p => p.Brand)
+            .Include(v => v.Product)
+                .ThenInclude(p => p.ProductCategories)
+                .ThenInclude(pc => pc.Category)
+            .FirstOrDefaultAsync(v => v.VariationId == id);
 
         public async Task<Variation> CreateAsync(Variation variation)
         {
@@ -87,6 +92,10 @@ namespace ProductService.Repositories
                 .Include(v => v.Size)
                 .Include(v => v.Color)
                 .Include(v => v.Product)
+                    .ThenInclude(p => p.Brand)
+                .Include(v => v.Product)
+                    .ThenInclude(p => p.ProductCategories)
+                    .ThenInclude(pc => pc.Category)
                 .OrderBy(v => v.VariationId)
                 .AsNoTracking()
                 .ToListAsync();
@@ -95,11 +104,15 @@ namespace ProductService.Repositories
         public async Task<List<Variation>> SearchAsync(string? search, Guid? productId, int? colorId, int? sizeId)
         {
             var q = _context.Variations
-                .Include(v => v.Size)
-                .Include(v => v.Color)
-                .Include(v => v.Product)
-                .AsNoTracking()
-                .AsQueryable();
+            .Include(v => v.Size)
+            .Include(v => v.Color)
+            .Include(v => v.Product)
+                .ThenInclude(p => p.Brand)
+            .Include(v => v.Product)
+                .ThenInclude(p => p.ProductCategories)
+                .ThenInclude(pc => pc.Category)
+            .AsNoTracking()
+            .AsQueryable();
 
             if (productId.HasValue) q = q.Where(v => v.ProductId == productId.Value);
             if (colorId.HasValue) q = q.Where(v => v.ColorId == colorId.Value);

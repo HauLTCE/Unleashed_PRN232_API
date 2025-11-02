@@ -11,7 +11,6 @@ namespace ReviewService.DTOs.Review
         public Guid? UserId { get; set; }
 
         [Required]
-        [StringLength(255)]
         public Guid OrderId { get; set; }
 
         [Required]

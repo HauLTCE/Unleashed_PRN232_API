@@ -14,7 +14,7 @@ namespace InventoryService.Repositories.Interfaces
         Task DeleteAsync(int id);
         Task<bool> ExistsAsync(int id);
         Task<List<Transaction>> ListAsync(ISpecification<Transaction> spec);
-        Task<int> CountAsync(string? searchTerm, string? dateFilter);
+        Task<int> CountAsync(ISpecification<Transaction> spec);
 
     }
 }

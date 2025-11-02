@@ -29,4 +29,8 @@ public partial class Category
 
     [Column("category_updated_at")]
     public DateTimeOffset? CategoryUpdatedAt { get; set; }
+
+    [InverseProperty("Category")]
+    public virtual ICollection<ProductCategory> ProductCategories { get; set; } = new List<ProductCategory>();
+
 }

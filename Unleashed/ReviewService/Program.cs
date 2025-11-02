@@ -24,19 +24,11 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        // 1. Validates that the token was signed by the key we specified.
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-
-        // 2. Set these to 'false' because don't have issuer or audience.
         ValidateIssuer = false,
         ValidateAudience = false,
-
-        // 3. Validates that the token has not expired.
         ValidateLifetime = true,
-
-        // 4. Sets a grace period for token expiration to account for clock differences.
-        // TimeSpan.Zero means no grace period.
         ClockSkew = TimeSpan.Zero
     };
 });
@@ -65,7 +57,7 @@ builder.Services.AddHttpClient<IProductServiceClient, ProductServiceClient>(clie
     client.BaseAddress = new Uri("http://productservice");
 }).AddServiceDiscovery();
 
-builder.Services.AddHttpClient("orderservice", client =>
+builder.Services.AddHttpClient<IOrderServiceClient, OrderServiceClient>(client =>
 {
     client.BaseAddress = new Uri("http://orderservice");
 }).AddServiceDiscovery();

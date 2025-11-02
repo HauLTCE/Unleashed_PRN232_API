@@ -1,8 +1,6 @@
-﻿using ProductService.DTOs.OtherDTOs;
-
-namespace ProductService.DTOs.VariationDTOs
+﻿namespace InventoryService.DTOs.External
 {
-    public class VariationDetailDTO
+    public class FlatVariationDto
     {
         public int VariationId { get; set; }
         public Guid? ProductId { get; set; }
@@ -12,8 +10,8 @@ namespace ProductService.DTOs.VariationDTOs
         public decimal? VariationPrice { get; set; }
         public string? ProductName { get; set; }
         public string? BrandName { get; set; }
-        public List<string> CategoryNames { get; set; } = new List<string>();
-        public SizeDTO? Size { get; set; }
-        public ColorDTO? Color { get; set; }
+        public List<string>? CategoryNames { get; set; }
+        public SizeDto? Size { get; set; }
+        public ColorDto? Color { get; set; }
     }
 }

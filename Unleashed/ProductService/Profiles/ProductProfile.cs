@@ -15,7 +15,6 @@ namespace ProductService.Profiles
             // --- DTO -> Model ---
             CreateMap<CreateProductDTO, Product>();
             CreateMap<UpdateProductDTO, Product>()
-                // BỎ QUA CÁC THUỘC TÍNH NULL TRONG DTO KHI MAP SANG ENTITY
                 .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
             CreateMap<CreateVariationDTO, Variation>();
@@ -28,7 +27,15 @@ namespace ProductService.Profiles
             // --- Model -> DTO ---
             CreateMap<Product, ProductDetailDTO>();
             CreateMap<Product, ProductListDTO>();
-            CreateMap<Variation, VariationDetailDTO>();
+
+            CreateMap<Variation, VariationDetailDTO>()
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.ProductName : null))
+                .ForMember(dest => dest.BrandName, opt => opt.MapFrom(src => (src.Product != null && src.Product.Brand != null) ? src.Product.Brand.BrandName : null))
+                .ForMember(dest => dest.CategoryNames, opt => opt.MapFrom(src =>
+                    (src.Product != null && src.Product.ProductCategories != null)
+                    ? src.Product.ProductCategories.Select(pc => pc.Category.CategoryName)
+                    : new List<string>()));
+
             CreateMap<ProductStatus, ProductStatusDTO>();
             CreateMap<Brand, BrandDetailDTO>();
             CreateMap<Category, CategoryDetailDTO>();

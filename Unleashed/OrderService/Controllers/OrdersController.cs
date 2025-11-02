@@ -151,6 +151,17 @@ namespace OrderService.Controllers
             }
         }
 
-       
+        [HttpGet("user/{userId}/eligible-for-review")]
+        public async Task<IActionResult> GetEligibleOrdersForReview(Guid userId, [FromQuery] Guid productId)
+        {
+            if (productId == Guid.Empty)
+            {
+                return BadRequest("A valid Product ID is required.");
+            }
+
+            var result = await _orderService.GetEligibleOrdersForReviewAsync(userId, productId);
+            return Ok(result);
+        }
+
     }
 }

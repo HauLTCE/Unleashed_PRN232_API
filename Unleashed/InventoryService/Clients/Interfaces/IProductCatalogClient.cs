@@ -6,5 +6,6 @@ namespace InventoryService.Clients.Interfaces
     {
         Task<VariationDto?> GetVariationByIdAsync(int variationId);
         Task<IEnumerable<VariationDto>> GetVariationsByIdsAsync(IEnumerable<int> variationIds);
+        Task<IEnumerable<VariationDto>> SearchVariationsAsync(string searchTerm);
     }
 }

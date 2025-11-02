@@ -41,10 +41,17 @@ namespace InventoryService.Repositories
 
         public async Task DeleteAsync(int id)
         {
-            var stock = await _context.Stocks.FindAsync(id);
+            var stock = await _context.Stocks
+                .Include(s => s.StockVariations)
+                .Include(s => s.Transactions)
+                .FirstOrDefaultAsync(s => s.StockId == id);
+
             if (stock != null)
             {
+                _context.StockVariations.RemoveRange(stock.StockVariations);
+                _context.Transactions.RemoveRange(stock.Transactions);
                 _context.Stocks.Remove(stock);
+
                 await _context.SaveChangesAsync();
             }
         }

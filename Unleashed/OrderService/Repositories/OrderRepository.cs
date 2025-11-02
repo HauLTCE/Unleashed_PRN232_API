@@ -158,5 +158,14 @@ namespace OrderService.Repositories
 
             return  (items,totalItems);
         }
+
+        public async Task<IEnumerable<Order>> GetCompletedOrdersByUserIdAsync(Guid userId)
+        {
+            return await _context.Orders
+                .Include(o => o.OrderVariations)
+                .Include(o => o.OrderStatus)
+                .Where(o => o.UserId == userId && o.OrderStatus.OrderStatusName == "COMPLETED")
+                .ToListAsync();
+        }
     }
 }

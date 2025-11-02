@@ -9,6 +9,7 @@ namespace OrderService.Services.Interfaces
         Task<PagedResult<OrderDto>> GetAllOrdersAsync(string? search, string? sort, int? statusId, int page, int size);
         Task<OrderDto?> GetOrderByIdAsync(Guid orderId);
         Task<PagedResult<OrderDto>> GetOrdersByCustomerIdAsync(Guid userId, int page, int size);
+        Task<IEnumerable<OrderDto>> GetEligibleOrdersForReviewAsync(Guid userId, Guid productId);
 
         // Logic nghiệp vụ mới
         Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto);

@@ -85,6 +85,21 @@ namespace ReviewService.Repositories
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<Comment?> GetParentByCommentIdAsync(int commentId)
+        {
+            var parentId = await _context.CommentParents
+                .Where(cp => cp.CommentId == commentId)
+                .Select(cp => cp.CommentParentId)
+                .FirstOrDefaultAsync();
+
+            if (parentId.HasValue)
+            {
+                return await GetByIdAsync(parentId.Value);
+            }
+
+            return null;
+        }
+
         public async Task DeleteParentLinkAsync(int commentId)
         {
             var links = _context.CommentParents.Where(cp => cp.CommentId == commentId);
@@ -103,23 +118,28 @@ namespace ReviewService.Repositories
         {
             var sql = @"
                 WITH CommentTree AS (
-                    SELECT c.*
-                    FROM dbo.comment c
-                    JOIN dbo.comment_parent cp ON c.comment_id = cp.comment_id
+                    SELECT cp.comment_id
+                    FROM dbo.comment_parent cp
                     WHERE cp.comment_parent_id = {0}
 
                     UNION ALL
 
-                    SELECT c.*
-                    FROM dbo.comment c
-                    JOIN dbo.comment_parent cp ON c.comment_id = cp.comment_id
-                    JOIN CommentTree ct ON cp.comment_parent_id = ct.comment_id
+                    SELECT cp.comment_id
+                    FROM dbo.comment_parent cp
+                    INNER JOIN CommentTree ct ON cp.comment_parent_id = ct.comment_id
                 )
-                SELECT *
-                FROM CommentTree
-                ORDER BY comment_created_at ASC;";
+                SELECT c.*
+                FROM dbo.comment c
+                WHERE c.comment_id IN (SELECT comment_id FROM CommentTree);";
 
             return await _context.Comments.FromSqlRaw(sql, rootCommentId).ToListAsync();
+        }
+
+        public async Task<Dictionary<int, int>> GetParentIdsForCommentsAsync(IEnumerable<int> commentIds)
+        {
+            return await _context.CommentParents
+                .Where(cp => cp.CommentId.HasValue && commentIds.Contains(cp.CommentId.Value) && cp.CommentParentId.HasValue)
+                .ToDictionaryAsync(cp => cp.CommentId.Value, cp => cp.CommentParentId.Value);
         }
 
     }

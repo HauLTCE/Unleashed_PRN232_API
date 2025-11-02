@@ -20,6 +20,7 @@ namespace ReviewService.Services
         private readonly IReviewRepository _reviewRepository;
         private readonly IMapper _mapper;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly TimeZoneInfo _targetTimeZone;
 
         public CommentService(
             ICommentRepository commentRepository,
@@ -31,9 +32,15 @@ namespace ReviewService.Services
             _reviewRepository = reviewRepository;
             _mapper = mapper;
             _httpClientFactory = httpClientFactory;
+            _targetTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
         }
 
-        public async Task<CommentDto> CreateReplyAsync(CreateCommentDto commentDto, Guid replyingUserId) // notif problem
+        private DateTimeOffset GetCurrentTimeInTargetZone()
+        {
+            return TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, _targetTimeZone);
+        }
+
+        public async Task<CommentDto> CreateReplyAsync(CreateCommentDto commentDto, Guid replyingUserId)
         {
             if (!commentDto.ParentCommentId.HasValue || commentDto.ParentCommentId <= 0)
                 throw new BadRequestException("A parent comment ID is required to create a reply.");
@@ -48,12 +55,13 @@ namespace ReviewService.Services
             var review = await _reviewRepository.GetByIdAsync(parentComment.ReviewId.Value);
             if (review == null) throw new NotFoundException("Associated review not found.");
 
+            var currentTime = GetCurrentTimeInTargetZone();
             var newCommentEntity = new Comment
             {
                 ReviewId = parentComment.ReviewId,
                 CommentContent = commentDto.CommentContent,
-                CommentCreatedAt = DateTimeOffset.UtcNow,
-                CommentUpdatedAt = DateTimeOffset.UtcNow
+                CommentCreatedAt = currentTime,
+                CommentUpdatedAt = currentTime
             };
             var savedComment = await _commentRepository.AddAsync(newCommentEntity);
 
@@ -83,6 +91,58 @@ namespace ReviewService.Services
             });
 
             return _mapper.Map<CommentDto>(savedComment);
+        }
+
+        public async Task<bool> UpdateCommentAsync(int id, UpdateCommentDto commentDto, Guid currentUserId)
+        {
+            var commentToUpdate = await _commentRepository.GetByIdAsync(id);
+            if (commentToUpdate == null) return false;
+
+            _mapper.Map(commentDto, commentToUpdate);
+            commentToUpdate.CommentUpdatedAt = GetCurrentTimeInTargetZone();
+
+            await _commentRepository.UpdateAsync(commentToUpdate);
+            return true;
+        }
+
+        public async Task<CommentDto> GetCommentParentAsync(int commentId)
+        {
+            if (!await _commentRepository.ExistsAsync(commentId))
+            {
+                throw new NotFoundException("Comment not found.");
+            }
+            var parent = await _commentRepository.GetParentByCommentIdAsync(commentId);
+            if (parent == null)
+            {
+                throw new NotFoundException("This comment does not have a parent.");
+            }
+            return _mapper.Map<CommentDto>(parent);
+        }
+
+        public async Task<IEnumerable<CommentDto>> GetCommentDescendantsAsync(int commentId)
+        {
+            var descendants = (await _commentRepository.GetDescendantsAsync(commentId)).ToList();
+
+            if (!descendants.Any())
+            {
+                return Enumerable.Empty<CommentDto>();
+            }
+
+            var descendantIds = descendants.Select(d => d.CommentId);
+
+            var parentLinks = await _commentRepository.GetParentIdsForCommentsAsync(descendantIds);
+
+            var descendantDtos = _mapper.Map<List<CommentDto>>(descendants);
+
+            foreach (var dto in descendantDtos)
+            {
+                if (parentLinks.TryGetValue(dto.CommentId, out var parentId))
+                {
+                    dto.ParentCommentId = parentId;
+                }
+            }
+
+            return descendantDtos;
         }
 
         public async Task<bool> DeleteCommentAsync(int id, Guid currentUserId, IEnumerable<string> roles)
@@ -129,23 +189,6 @@ namespace ReviewService.Services
         {
             var comment = await _commentRepository.GetByIdAsync(id);
             return _mapper.Map<CommentDto>(comment);
-        }
-
-        public async Task<bool> UpdateCommentAsync(int id, UpdateCommentDto commentDto, Guid currentUserId)
-        {
-            var commentToUpdate = await _commentRepository.GetByIdAsync(id);
-            if (commentToUpdate == null) return false;
-
-            _mapper.Map(commentDto, commentToUpdate);
-            commentToUpdate.CommentUpdatedAt = DateTimeOffset.UtcNow;
-
-            await _commentRepository.UpdateAsync(commentToUpdate);
-            return true;
-        }
-
-        public Task<IEnumerable<int>> GetCommentAncestorsAsync(int commentId)
-        {
-            throw new NotImplementedException();
         }
     }
 }

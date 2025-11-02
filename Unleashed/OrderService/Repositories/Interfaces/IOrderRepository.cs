@@ -12,5 +12,6 @@ namespace OrderService.Repositories.Interfaces
 
         Task<Order?> GetOrderDetailsByIdAsync(Guid orderId);
         Task<(IEnumerable<Order>, int total)> GetOrdersByUserIdAsync(Guid userId, int page, int size);
+        Task<IEnumerable<Order>> GetCompletedOrdersByUserIdAsync(Guid userId);
     }
 }

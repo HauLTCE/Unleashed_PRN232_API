@@ -41,9 +41,21 @@ namespace InventoryService.Services
 
         public async Task<PaginatedResult<TransactionCardDTO>> GetTransactionsFilteredAsync(string? searchTerm, string? dateFilter, string? sort, int page, int pageSize)
         {
-            var spec = new TransactionSpecification(searchTerm, dateFilter, sort, page, pageSize);
+            List<int>? variationIdsFromSearch = null;
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var searchedVariations = await _productCatalogClient.SearchVariationsAsync(searchTerm);
+                if (searchedVariations != null && searchedVariations.Any())
+                {
+                    variationIdsFromSearch = searchedVariations.Select(v => v.VariationId).ToList();
+                }
+            }
+
+            var spec = new TransactionSpecification(searchTerm, dateFilter, sort, page, pageSize, variationIdsFromSearch);
+            var countSpec = new TransactionSpecification(searchTerm, dateFilter, variationIdsFromSearch);
             var transactions = await _transactionRepository.ListAsync(spec);
-            var totalCount = await _transactionRepository.CountAsync(searchTerm, dateFilter);
+            var totalCount = await _transactionRepository.CountAsync(countSpec);
 
             if (transactions == null || !transactions.Any())
             {
@@ -61,13 +73,12 @@ namespace InventoryService.Services
                 var variationDetails = await _productCatalogClient.GetVariationsByIdsAsync(variationIds);
                 if (variationDetails != null)
                 {
-                    // ✅ FIX: Use the correct property 'VariationId' as the dictionary key
                     variationsMap = variationDetails.ToDictionary(v => v.VariationId);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch details from ProductService. The response will contain partial data.");
+                _logger.LogError(ex, "Failed to fetch details from ProductService.");
             }
 
             try
@@ -76,11 +87,15 @@ namespace InventoryService.Services
                 if (employeeDetails != null)
                 {
                     employeesMap = employeeDetails.ToDictionary(e => e.UserId);
+                    foreach (var employee in employeeDetails)
+                    {
+                        _logger.LogWarning("Employee Details - ID: {EmployeeId}, Username: {Username}", employee.UserId, employee.UserUsername);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch details from AuthService. The response will contain partial data.");
+                _logger.LogError(ex, "Failed to fetch details from AuthService.");
             }
 
             var cardDtos = transactions.Select(t => MapToCardDto(t, variationsMap, employeesMap)).ToList();
@@ -111,7 +126,7 @@ namespace InventoryService.Services
                 VariationImage = variation?.VariationImage,
                 ProductName = variation?.Product?.ProductName,
                 BrandName = variation?.Product?.BrandName,
-                CategoryName = variation?.Product?.CategoryName,
+                CategoryName = variation?.Product?.CategoryNames?.FirstOrDefault(),
                 SizeName = variation?.Size?.SizeName,
                 ColorName = variation?.Color?.ColorName,
                 ColorHexCode = variation?.Color?.ColorHexCode,
@@ -121,28 +136,38 @@ namespace InventoryService.Services
 
         public async Task<bool> CreateBulkStockTransactionsAsync(StockTransactionDto importDto)
         {
+            if (importDto.Variations == null || !importDto.Variations.Any())
+            {
+                _logger.LogWarning("Bulk import failed: The list of variations was empty or null.");
+                return false;
+            }
             if (string.IsNullOrWhiteSpace(importDto.Username))
             {
                 _logger.LogWarning("Bulk import failed: Username was not provided.");
                 return false;
             }
+            if (importDto.StockId == null || importDto.StockId <= 0)
+            {
+                _logger.LogWarning("Bulk import failed: A valid StockId was not provided.");
+                return false;
+            }
+
 
             var user = await _authServiceClient.GetUserByUsernameAsync(importDto.Username);
-
             if (user == null)
             {
                 _logger.LogWarning("Bulk import failed: User '{Username}' not found.", importDto.Username);
                 return false;
             }
 
-            var variationIds = importDto.Variations!.Select(v => v.VariationId!.Value);
+            var variationIds = importDto.Variations.Select(v => v.VariationId!.Value);
             var variationsFromApi = (await _productCatalogClient.GetVariationsByIdsAsync(variationIds)).ToList();
-
             if (variationsFromApi == null || !variationsFromApi.Any())
             {
                 _logger.LogWarning("Bulk import failed: Product Catalog Service returned no variations for the provided IDs.");
                 return false;
             }
+
 
             using var dbTransaction = await _context.Database.BeginTransactionAsync();
             try
@@ -151,13 +176,18 @@ namespace InventoryService.Services
                 var stockVariationsToUpdate = new List<StockVariation>();
                 var stockVariationsToCreate = new List<StockVariation>();
 
-                var existingStockVariations = await _stockVariationRepository.GetByIdsAsync(variationIds);
-                var stockMap = existingStockVariations.ToDictionary(sv => sv.VariationId, sv => sv);
+                var existingStockVariations = await _stockVariationRepository.GetByStockAndVariationIdsAsync(importDto.StockId.Value, variationIds);
+                var stockMap = existingStockVariations.ToDictionary(sv => sv.VariationId);
 
-                foreach (var item in importDto.Variations!)
+                foreach (var item in importDto.Variations)
                 {
-                    var variationInfo = variationsFromApi.FirstOrDefault(v => v.VariationId == item.VariationId!.Value);
+                    if (item.VariationId == null || item.Quantity <= 0)
+                    {
+                        _logger.LogWarning("Skipping item with invalid VariationId or non-positive quantity.");
+                        continue;
+                    }
 
+                    var variationInfo = variationsFromApi.FirstOrDefault(v => v.VariationId == item.VariationId.Value);
                     if (variationInfo == null)
                     {
                         _logger.LogWarning("Skipping import for VariationId {VariationId} because it was not found in the Product Catalog Service.", item.VariationId);
@@ -172,21 +202,23 @@ namespace InventoryService.Services
                         VariationId = item.VariationId,
                         TransactionQuantity = item.Quantity,
                         TransactionTypeId = 1,
-                        TransactionProductPrice = variationInfo.Price,
+                        TransactionProductPrice = variationInfo.VariationPrice,
                         TransactionDate = DateTimeOffset.UtcNow
                     });
 
-                    if (stockMap.TryGetValue(item.VariationId.Value, out var stockVar))
+                    if (stockMap.TryGetValue(item.VariationId.Value, out var existingStockVariation))
                     {
-                        stockVar.StockQuantity = (stockVar.StockQuantity ?? 0) + item.Quantity;
-                        stockVariationsToUpdate.Add(stockVar);
+                        // EXISTS: Update the quantity
+                        existingStockVariation.StockQuantity = (existingStockVariation.StockQuantity ?? 0) + item.Quantity;
+                        stockVariationsToUpdate.Add(existingStockVariation);
                     }
                     else
                     {
+                        // DOES NOT EXIST: Create a new record
                         stockVariationsToCreate.Add(new StockVariation
                         {
-                            StockId = importDto.StockId!.Value,
-                            VariationId = item.VariationId!.Value,
+                            StockId = importDto.StockId.Value,
+                            VariationId = item.VariationId.Value,
                             StockQuantity = item.Quantity
                         });
                     }
@@ -194,24 +226,31 @@ namespace InventoryService.Services
 
                 if (!newTransactions.Any())
                 {
-                    _logger.LogWarning("Bulk import failed because no valid variations were found or provided.");
+                    _logger.LogWarning("Bulk import processing resulted in no valid transactions to save. Rolling back.");
                     await dbTransaction.RollbackAsync();
                     return false;
                 }
 
-                if (stockVariationsToCreate.Any()) await _context.StockVariations.AddRangeAsync(stockVariationsToCreate);
-                if (stockVariationsToUpdate.Any()) _context.StockVariations.UpdateRange(stockVariationsToUpdate);
+                if (stockVariationsToCreate.Any())
+                {
+                    await _context.StockVariations.AddRangeAsync(stockVariationsToCreate);
+                }
+                if (stockVariationsToUpdate.Any())
+                {
+                    _context.StockVariations.UpdateRange(stockVariationsToUpdate);
+                }
+
                 await _context.Transactions.AddRangeAsync(newTransactions);
 
                 await _context.SaveChangesAsync();
                 await dbTransaction.CommitAsync();
 
-                _logger.LogInformation("Successfully imported {Count} stock transaction records.", newTransactions.Count);
+                _logger.LogInformation("Successfully imported {Count} stock transaction records for StockId {StockId}.", newTransactions.Count, importDto.StockId);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred during bulk stock import. Rolling back transaction.");
+                _logger.LogError(ex, "An error occurred during bulk stock import for StockId {StockId}. Rolling back transaction.", importDto.StockId);
                 await dbTransaction.RollbackAsync();
                 return false;
             }

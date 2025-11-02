@@ -37,7 +37,6 @@ namespace InventoryService.Services
         {
             if (await _stockVariationRepository.ExistsAsync(stockVariationDto.StockId, stockVariationDto.VariationId))
             {
-                // Return null to indicate a conflict
                 return null;
             }
 
@@ -54,7 +53,6 @@ namespace InventoryService.Services
                 return false;
             }
 
-            // Map updated properties onto the existing entity
             _mapper.Map(stockVariationDto, stockVariationToUpdate);
             await _stockVariationRepository.UpdateAsync(stockVariationToUpdate);
             return true;
