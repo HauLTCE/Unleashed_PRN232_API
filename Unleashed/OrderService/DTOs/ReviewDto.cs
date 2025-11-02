@@ -2,6 +2,6 @@
 {
     public class ReviewOrderDto
     {
-        public bool IsApproved { get; set; }
+        public int orderStatus { get; set; }
     }
 }

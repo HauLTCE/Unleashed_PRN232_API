@@ -97,31 +97,65 @@ namespace InventoryService.Services
             if (variationIds == null || variationIds.Count == 0)
                 return [];
 
-            var semaphore = new SemaphoreSlim(10); 
+            var result = new List<Inventory_OrderDto?>();
 
-            var stockTasks = variationIds.Select(async id =>
+            foreach (var id in variationIds)
             {
-                await semaphore.WaitAsync();
                 try
                 {
-                    return await GetStockByVariationIdAsync(id);
+                    var stock = await GetStockByVariationIdAsync(id);
+                    result.Add(stock);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    return null;
+                    result.Add(null); // keep index alignment, same behavior as before
                 }
-                finally
-                {
-                    semaphore.Release();
-                }
-            });
+            }
 
-            return await Task.WhenAll(stockTasks);
+            return result;
         }
+
+
         public async Task<IEnumerable<StockVariationDto>> GetStockVariationsByStockIdAsync(int stockId)
         {
             var stockVariations = await _stockVariationRepository.GetByStockIdAsync(stockId);
             return _mapper.Map<IEnumerable<StockVariationDto>>(stockVariations);
+        }
+
+        public async Task DecreaseStocksAsync(List<Order_InventoryDto> orderList)
+        {
+            foreach (var item in orderList)
+            {
+                var remainingQty = item.Quantity;
+
+                var stockVariations = await _stockVariationRepository
+                    .GetByVariationIdAsync(item.VariationId);
+
+                foreach (var stock in stockVariations)
+                {
+                    if (remainingQty <= 0) break;
+
+                    if (remainingQty >= stock.StockQuantity)
+                    {
+                        remainingQty -= stock.StockQuantity;
+                        stock.StockQuantity = 0;
+                    }
+                    else
+                    {
+                        stock.StockQuantity -= remainingQty;
+                        remainingQty = 0;
+                        break;
+                    }
+                }
+
+                if (remainingQty > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Not enough stock for variation {item.VariationId}. Missing: {remainingQty}");
+                }
+
+                await _stockVariationRepository.UpdateRangeAsync(stockVariations);
+            }
         }
 
     }

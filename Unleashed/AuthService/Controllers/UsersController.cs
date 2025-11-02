@@ -14,7 +14,6 @@ namespace AuthService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class UsersController : ControllerBase //lacking a self modification. self mods check for if the user is the same one as the one being mod. if yes, allow, if no, fuck no
     {
         private readonly IUserService _userService;

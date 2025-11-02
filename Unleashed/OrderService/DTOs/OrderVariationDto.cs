@@ -4,7 +4,7 @@ namespace OrderService.Dtos
 {
     public class OrderVariationDto
     {
-        public int VariationSId { get; set; }
+        public int VariationId { get; set; }
         public int? SaleId { get; set; }
         public int? Quantity { get; set; }
 
