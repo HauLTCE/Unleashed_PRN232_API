@@ -38,7 +38,7 @@ public class UserProfile : Profile
 
 
         CreateMap<User, UserSummaryDTO>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.UserId))
-                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserFullname));
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+                .ForMember(dest => dest.UserUsername, opt => opt.MapFrom(src => src.UserFullname));
     }
 }

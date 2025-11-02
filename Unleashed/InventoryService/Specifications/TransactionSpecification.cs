@@ -1,26 +1,24 @@
 ﻿using Ardalis.Specification;
 using InventoryService.Models;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace InventoryService.Specifications
 {
     public class TransactionSpecification : Specification<Transaction>
     {
-        public TransactionSpecification(string? searchTerm, string? dateFilter, string? sort, int page, int pageSize)
+        public TransactionSpecification(string? searchTerm, string? dateFilter, string? sort, int page, int pageSize, List<int>? variationIds)
         {
-            ApplyFilters(searchTerm, dateFilter);
-            ApplySorting(sort);
             ApplyPaging(page, pageSize);
+            ApplySorting(sort);
+            ApplyFilters(searchTerm, dateFilter, variationIds);
         }
 
-        public TransactionSpecification(string? searchTerm, string? dateFilter)
+        public TransactionSpecification(string? searchTerm, string? dateFilter, List<int>? variationIds)
         {
-            ApplyFilters(searchTerm, dateFilter);
+            ApplyFilters(searchTerm, dateFilter, variationIds);
         }
 
-        private void ApplyFilters(string? searchTerm, string? dateFilter)
+        private void ApplyFilters(string? searchTerm, string? dateFilter, List<int>? variationIds)
         {
-            // date filter
             if (!string.IsNullOrEmpty(dateFilter) && !dateFilter.Equals("all", StringComparison.OrdinalIgnoreCase))
             {
                 var now = DateTimeOffset.UtcNow;
@@ -32,25 +30,26 @@ namespace InventoryService.Specifications
                     "6months" => now.AddMonths(-6),
                     _ => DateTimeOffset.MinValue
                 };
-
                 if (startDate > DateTimeOffset.MinValue)
                 {
                     Query.Where(t => t.TransactionDate >= startDate);
                 }
             }
 
-            // search term filter
-            if (!string.IsNullOrWhiteSpace(searchTerm))
+            if (variationIds != null && variationIds.Any())
+            {
+                Query.Where(t => t.VariationId.HasValue && variationIds.Contains(t.VariationId.Value));
+            }
+            else if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var lowerSearchTerm = searchTerm.ToLower();
                 Query.Where(t =>
-                    (t.Provider != null && t.Provider.ProviderName != null && t.Provider.ProviderName.ToLower().Contains(lowerSearchTerm)) ||
-                    (t.Stock != null && t.Stock.StockName != null && t.Stock.StockName.ToLower().Contains(lowerSearchTerm)) ||
-                    (t.TransactionType != null && t.TransactionType.TransactionTypeName != null && t.TransactionType.TransactionTypeName.ToLower().Contains(lowerSearchTerm))
+                    (t.Provider.ProviderName != null && t.Provider.ProviderName.ToLower().Contains(lowerSearchTerm)) ||
+                    (t.Stock.StockName != null && t.Stock.StockName.ToLower().Contains(lowerSearchTerm)) ||
+                    (t.TransactionType.TransactionTypeName != null && t.TransactionType.TransactionTypeName.ToLower().Contains(lowerSearchTerm))
                 );
             }
 
-            // eager load
             Query.Include(t => t.Provider)
                  .Include(t => t.Stock)
                  .Include(t => t.TransactionType);

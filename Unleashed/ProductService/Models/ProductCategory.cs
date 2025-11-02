@@ -6,15 +6,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ProductService.Models;
 
-[Keyless]
+//[Keyless]
 [Table("product_category")]
 public partial class ProductCategory
 {
     [Column("product_id")]
-    public Guid? ProductId { get; set; }
+    public Guid ProductId { get; set; }
 
     [Column("category_id")]
-    public int? CategoryId { get; set; }
+    public int CategoryId { get; set; }
 
     [ForeignKey("CategoryId")]
     public virtual Category? Category { get; set; }

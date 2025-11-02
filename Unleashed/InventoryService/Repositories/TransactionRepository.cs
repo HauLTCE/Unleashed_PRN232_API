@@ -49,7 +49,6 @@ namespace InventoryService.Repositories
             if (transaction != null)
             {
                 _context.Transactions.Remove(transaction);
-                // Note: SaveChangesAsync is handled in the service layer
             }
         }
 
@@ -64,11 +63,9 @@ namespace InventoryService.Repositories
             return await queryResult.ToListAsync();
         }
 
-        public async Task<int> CountAsync(string? searchTerm, string? dateFilter)
+        public async Task<int> CountAsync(ISpecification<Transaction> spec)
         {
-            var countSpec = new TransactionSpecification(searchTerm, dateFilter);
-
-            var queryResult = _specificationEvaluator.GetQuery(_context.Set<Transaction>().AsQueryable(), countSpec);
+            var queryResult = _specificationEvaluator.GetQuery(_context.Set<Transaction>().AsQueryable(), spec);
             return await queryResult.CountAsync();
         }
 

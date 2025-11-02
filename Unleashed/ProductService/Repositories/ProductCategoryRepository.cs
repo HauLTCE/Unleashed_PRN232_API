@@ -29,7 +29,7 @@ namespace ProductService.Repositories
                 .ToListAsync();
 
             // 2) Loại trùng
-            var toAdd = categoryIds.Distinct().Except(existing.Where(x => x.HasValue).Select(x => x!.Value)).ToList();
+            var toAdd = categoryIds.Distinct().Except(existing).ToList();
             if (toAdd.Count == 0) return;
 
             // 3) Insert từng dòng bằng Raw SQL (an toàn, clear)

@@ -59,9 +59,17 @@ public partial class ProductDbContext : DbContext
 
         modelBuilder.Entity<ProductCategory>(entity =>
         {
-            entity.HasOne(d => d.Category).WithMany().HasConstraintName("product_category_category_id_fkey");
+            entity.HasKey(pc => new { pc.ProductId, pc.CategoryId });
 
-            entity.HasOne(d => d.Product).WithMany().HasConstraintName("product_category_product_id_fkey");
+            entity.HasOne(pc => pc.Product)
+                .WithMany(p => p.ProductCategories)
+                .HasForeignKey(pc => pc.ProductId)
+                .HasConstraintName("product_category_product_id_fkey");
+
+            entity.HasOne(pc => pc.Category)
+                .WithMany(c => c.ProductCategories)
+                .HasForeignKey(pc => pc.CategoryId)
+                .HasConstraintName("product_category_category_id_fkey");
         });
 
         modelBuilder.Entity<ProductStatus>(entity =>

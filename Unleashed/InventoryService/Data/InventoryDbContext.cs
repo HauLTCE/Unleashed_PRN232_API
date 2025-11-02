@@ -40,7 +40,7 @@ public partial class InventoryDbContext : DbContext
             entity.HasKey(e => new { e.StockId, e.VariationId }).HasName("stock_variation_pkey");
 
             entity.HasOne(d => d.Stock).WithMany(p => p.StockVariations)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("stock_variation_stock_id_fkey");
         });
 
@@ -50,7 +50,7 @@ public partial class InventoryDbContext : DbContext
 
             entity.HasOne(d => d.Provider).WithMany(p => p.Transactions).HasConstraintName("transaction_provider_id_fkey");
 
-            entity.HasOne(d => d.Stock).WithMany(p => p.Transactions).HasConstraintName("transaction_stock_id_fkey");
+            entity.HasOne(d => d.Stock).WithMany(p => p.Transactions).OnDelete(DeleteBehavior.Cascade).HasConstraintName("transaction_stock_id_fkey");
 
             entity.HasOne(d => d.TransactionType).WithMany(p => p.Transactions).HasConstraintName("transaction_transaction_type_id_fkey");
         });
