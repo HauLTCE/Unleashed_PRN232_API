@@ -188,7 +188,7 @@ namespace DiscountService.Services
                 query = query.Where(d => d.DiscountTypeId == typeId.Value);
             }
 
-            // THAY ĐỔI: Bỏ .Skip() và .Take()
+          
             var data = await query.OrderByDescending(d => d.DiscountId)
                                 .ToListAsync();
 
@@ -284,7 +284,7 @@ namespace DiscountService.Services
             var userDiscountIds = await _userDiscountRepo.FindDiscountIdsByUserIdAsync(userGuid);
             if (!userDiscountIds.Any())
             {
-                // THAY ĐỔI: Kiểu trả về
+               
                 return Enumerable.Empty<DiscountViewDto>();
             }
 
@@ -317,7 +317,6 @@ namespace DiscountService.Services
                 query = query.OrderBy(d => d.DiscountStatusId).ThenBy(d => d.DiscountEndDate);
             }
 
-            // THAY ĐỔI: Bỏ .Skip() và .Take()
             var data = await query.ToListAsync();
 
             return _mapper.Map<IEnumerable<DiscountViewDto>>(data);

@@ -32,7 +32,6 @@ namespace CartService.Services
 
             var productClient = _httpClientFactory.CreateClient("productservice");
             var inventoryClient = _httpClientFactory.CreateClient("inventoryservice");
-            var discountClient = _httpClientFactory.CreateClient("discountservice");
 
             foreach (var cartItem in userCartItems)
             {
@@ -53,16 +52,6 @@ namespace CartService.Services
                 }
                 catch (HttpRequestException) { }
 
-                SaleDTO? saleInfo = null;
-                try
-                {
-                    saleInfo = await discountClient.GetFromJsonAsync<SaleDTO>($"api/sales/product/{variationDetails.ProductId}");
-                }
-                catch (HttpRequestException)
-                {
-                    saleInfo = null;
-                }
-
                 var variationDto = new VariationDTO
                 {
                     Id = variationDetails.VariationId,
@@ -77,8 +66,7 @@ namespace CartService.Services
                     Variation = variationDto,
                     ProductName = variationDetails.ProductName,
                     Quantity = cartItem.CartQuantity ?? 0,
-                    StockQuantity = stockQuantity,
-                    Sale = saleInfo
+                    StockQuantity = stockQuantity
                 });
             }
 
