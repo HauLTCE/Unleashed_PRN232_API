@@ -19,7 +19,8 @@ namespace CartService.Controllers
 
         private Guid GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+                              ?? User.FindFirst("sub"); // thêm fallback
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
             {
                 throw new UnauthorizedAccessException("User ID claim is missing or invalid in the token.");
@@ -43,7 +44,7 @@ namespace CartService.Controllers
         }
 
         [HttpPost("{variationId}")]
-        public async Task<IActionResult> AddToCart(int variationId, [FromBody] int quantity)
+        public async Task<IActionResult> AddToCart(int variationId, [FromQuery] int quantity)
         {
             if (quantity <= 0)
             {
