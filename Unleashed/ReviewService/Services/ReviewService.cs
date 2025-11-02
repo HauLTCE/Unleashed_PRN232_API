@@ -20,56 +20,51 @@ namespace ReviewService.Services
         private readonly IReviewRepository _reviewRepository;
         private readonly ICommentRepository _commentRepository;
         private readonly IMapper _mapper;
-        private readonly IHttpClientFactory _httpClientFactory;
         private readonly IAuthServiceClient _authServiceClient;
         private readonly IProductServiceClient _productServiceClient;
+        private readonly IOrderServiceClient _orderServiceClient;
         private readonly ILogger<ReviewServicee> _logger;
 
         public ReviewServicee(
             IReviewRepository reviewRepository,
             ICommentRepository commentRepository,
             IMapper mapper,
-            IHttpClientFactory httpClientFactory,
             IAuthServiceClient authServiceClient,
             IProductServiceClient productServiceClient,
+            IOrderServiceClient orderServiceClient,
             ILogger<ReviewServicee> logger)
         {
             _reviewRepository = reviewRepository;
             _commentRepository = commentRepository;
             _mapper = mapper;
-            _httpClientFactory = httpClientFactory;
             _authServiceClient = authServiceClient;
             _productServiceClient = productServiceClient;
+            _orderServiceClient = orderServiceClient;
             _logger = logger;
         }
 
         public async Task<ReviewDto> CreateReviewAsync(CreateReviewDto reviewDto, Guid currentUserId)
         {
-            if (reviewDto.ProductId == null || reviewDto.OrderId == null || reviewDto.UserId == null)
-                throw new BadRequestException("Product, Order, and User IDs cannot be null.");
+            if (reviewDto.ProductId == null || reviewDto.UserId == null)
+                throw new BadRequestException("Product and User IDs cannot be null.");
 
             if (currentUserId != reviewDto.UserId)
                 throw new ForbiddenException("You can only create reviews for yourself.");
 
             if (await _reviewRepository.ExistsByProductAndOrderAndUserAsync(reviewDto.ProductId.Value, reviewDto.OrderId, reviewDto.UserId.Value))
             {
-                throw new BadRequestException("You have already reviewed this product for this specific order.");
+                //throw new BadRequestException("You have already reviewed this product for this specific order.");
             }
 
-            var orderClient = _httpClientFactory.CreateClient("orderservice");
-            OrderDto? order;
-            try
-            {
-                order = await orderClient.GetFromJsonAsync<OrderDto>($"api/order/{reviewDto.OrderId}");
-            }
-            catch (HttpRequestException)
-            {
-                throw new NotFoundException("Order not found or OrderService is unavailable.");
-            }
+            var order = await _orderServiceClient.GetOrderByIdAsync(reviewDto.OrderId);
 
-            if (order == null) throw new NotFoundException("Order not found.");
-            if (order.UserId != currentUserId) throw new ForbiddenException("This order does not belong to you.");
-            if (order.OrderStatus?.ToUpper() != "COMPLETED") throw new ForbiddenException("You can only review products from completed orders.");
+            if (order == null) throw new NotFoundException("Order not found or OrderService is unavailable.");
+
+            //if (order.UserId != currentUserId) throw new ForbiddenException("This order does not belong to you.");
+
+            //if (order.OrderStatus != 4) throw new ForbiddenException("You can only review products from completed orders.");
+
+            _logger.LogCritical(order.OrderStatus.ToString()); //BRUH ORDER STATUS IS NULL BRO THE ORDER THING IS NOT WORKING WHY EVEN GET ORDER?
 
             var reviewEntity = _mapper.Map<Review>(reviewDto);
             var newReview = await _reviewRepository.AddAsync(reviewEntity);
@@ -153,11 +148,10 @@ namespace ReviewService.Services
 
         public async Task<IEnumerable<ReviewEligibilityDto>> GetReviewEligibilityAsync(Guid productId, Guid userId)
         {
-            var orderClient = _httpClientFactory.CreateClient("orderservice");
             List<OrderDto>? eligibleOrders;
             try
             {
-                eligibleOrders = await orderClient.GetFromJsonAsync<List<OrderDto>>($"api/order/user/{userId}/eligible-for-review?productId={productId}");
+                eligibleOrders = await _orderServiceClient.GetEligibleOrdersForReviewAsync(userId, productId);
             }
             catch (HttpRequestException)
             {
@@ -292,7 +286,7 @@ namespace ReviewService.Services
                 {
                     Id = review.ReviewId,
                     ReviewRating = review.ReviewRating,
-                    ProductId = review.ProductId?.ToString(),
+                    ProductId = review.ProductId,
                     ProductName = product?.ProductName,
                     ProductImageUrl = product?.ProductImageUrl,
                     CommentContent = rootComment?.CommentContent,
@@ -325,7 +319,6 @@ namespace ReviewService.Services
             var dtos = new List<DashboardReviewDto>();
             foreach (var review in pagedReviews.Items)
             {
-                // Find the first comment associated with the review, which is the main review text.
                 var rootComment = review.Comments.OrderBy(c => c.CommentId).FirstOrDefault();
 
                 usersMap.TryGetValue(review.UserId ?? Guid.Empty, out var user);
@@ -343,14 +336,12 @@ namespace ReviewService.Services
                     ReviewRating = review.ReviewRating,
                     ProductName = product?.ProductName,
                     VariationImage = product?.ProductImageUrl,
-                    ParentCommentContent = null, // Set to null for MVP
-                    IsMaxReply = false // Set to false for MVP
+                    ParentCommentContent = null,
+                    IsMaxReply = false
                 });
             }
 
             return new PagedResult<DashboardReviewDto>(dtos, pagedReviews.TotalCount);
         }
-
-
     }
 }

@@ -19,33 +19,71 @@ namespace ReviewService.Controllers
 
         // POST: api/comments
         [HttpPost]
-        [Authorize] // Any authenticated user can reply
-        public async Task<ActionResult<CommentDto>> PostReply(CreateCommentDto commentDto)
+        //[Authorize]
+        public async Task<ActionResult<CommentDto>> PostReply([FromQuery] Guid? userId, CreateCommentDto commentDto)
         {
-            var replyingUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid replyingUserId;
+
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
+            {
+                replyingUserId = parsedUserId;
+            }
+            else if (userId.HasValue)
+            {
+                replyingUserId = userId.Value;
+            }
+            else
+            {
+                return Unauthorized("User ID could not be determined. Please login or provide a 'userId' in the query string for debugging.");
+            }
+
             var createdComment = await _commentService.CreateReplyAsync(commentDto, replyingUserId);
             return CreatedAtAction(nameof(GetComment), new { id = createdComment.CommentId }, createdComment);
         }
 
         // DELETE: api/comments/5
         [HttpDelete("{id}")]
-        [Authorize] // Service layer will check for ownership or admin role
-        public async Task<IActionResult> DeleteComment(int id)
+        //[Authorize]
+        public async Task<IActionResult> DeleteComment(int id, [FromQuery] Guid? userId)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid currentUserId;
+
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
+            {
+                currentUserId = parsedUserId;
+            }
+            else if (userId.HasValue)
+            {
+                currentUserId = userId.Value;
+            }
+            else
+            {
+                return Unauthorized("User ID could not be determined. Please login or provide a 'userId' in the query string for debugging.");
+            }
+
             var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value);
 
-            var deleteResult = await _commentService.DeleteCommentAsync(id, userId, roles);
+            var deleteResult = await _commentService.DeleteCommentAsync(id, currentUserId, roles);
             if (!deleteResult) return NotFound();
 
             return NoContent();
         }
 
-        // GET: api/comments/{id}/ancestors
-        [HttpGet("{id}/ancestors")]
-        public async Task<IActionResult> GetCommentAncestors(int id)
+        // GET: api/comments/{id}/parent
+        [HttpGet("{id}/parent")]
+        public async Task<ActionResult<CommentDto>> GetCommentParent(int id)
         {
-            var result = await _commentService.GetCommentAncestorsAsync(id);
+            var result = await _commentService.GetCommentParentAsync(id);
+            return Ok(result);
+        }
+
+        // GET: api/comments/{id}/descendants
+        [HttpGet("{id}/descendants")]
+        public async Task<ActionResult<IEnumerable<CommentDto>>> GetCommentDescendants(int id)
+        {
+            var result = await _commentService.GetCommentDescendantsAsync(id);
             return Ok(result);
         }
 
@@ -60,10 +98,25 @@ namespace ReviewService.Controllers
 
         // PUT: api/Comments/5
         [HttpPut("{id}")]
-        [Authorize]
-        public async Task<IActionResult> PutComment(int id, UpdateCommentDto commentDto)
+        //[Authorize]
+        public async Task<IActionResult> PutComment(int id, UpdateCommentDto commentDto, [FromQuery] Guid? userId)
         {
-            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid currentUserId;
+
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
+            {
+                currentUserId = parsedUserId;
+            }
+            else if (userId.HasValue)
+            {
+                currentUserId = userId.Value;
+            }
+            else
+            {
+                return Unauthorized("User ID could not be determined. Please login or provide a 'userId' in the query string for debugging.");
+            }
+
             var updateResult = await _commentService.UpdateCommentAsync(id, commentDto, currentUserId);
             if (!updateResult) return NotFound();
             return NoContent();

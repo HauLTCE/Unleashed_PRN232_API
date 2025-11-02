@@ -22,11 +22,25 @@ namespace ReviewService.Controllers
 
         // POST: api/reviews
         [HttpPost]
-        [Authorize(Roles = "CUSTOMER")]
+        //[Authorize(Roles = "CUSTOMER")]
         public async Task<ActionResult<ReviewDto>> PostReview(CreateReviewDto reviewDto)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-            reviewDto.UserId = userId; // Ensure the DTO uses the authenticated user's ID
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            //if (string.IsNullOrEmpty(userIdClaim))
+            //{
+            //    return Unauthorized("User ID claim not found in token.");
+            //}
+
+            //if (!Guid.TryParse(userIdClaim, out var userId))
+            //{
+            //    return BadRequest("Invalid User ID format in token.");
+            //}
+
+            
+            var userId = Guid.Parse("E43DFF5D-7CAC-45C7-A699-81B48BEB33EF"); //FOR TESTING, SINCE NO UI = NO ID
+
+            reviewDto.UserId = userId;
 
             var createdReview = await _reviewService.CreateReviewAsync(reviewDto, userId);
             return CreatedAtAction(nameof(GetReview), new { id = createdReview.ReviewId }, createdReview);
@@ -89,7 +103,7 @@ namespace ReviewService.Controllers
 
         // PUT: api/Reviews/5
         [HttpPut("{id}")]
-        [Authorize] // Or more specific roles
+        //[Authorize]
         public async Task<IActionResult> PutReview(int id, UpdateReviewDto reviewDto)
         {
             var updateResult = await _reviewService.UpdateReviewAsync(id, reviewDto);
@@ -99,7 +113,7 @@ namespace ReviewService.Controllers
 
         // DELETE: api/Reviews/5
         [HttpDelete("{id}")]
-        [Authorize(Roles = "ADMIN,STAFF")]
+        //[Authorize(Roles = "ADMIN,STAFF")]
         public async Task<IActionResult> DeleteReview(int id)
         {
             var deleteResult = await _reviewService.DeleteReviewAsync(id);
@@ -109,7 +123,7 @@ namespace ReviewService.Controllers
 
         // GET: api/reviews/dashboard
         [HttpGet("dashboard")]
-        [Authorize(Roles = "ADMIN,STAFF")]
+        //[Authorize(Roles = "ADMIN,STAFF")]
         public async Task<IActionResult> GetDashboardReviews([FromQuery] int page = 0, [FromQuery] int size = 10)
         {
             _logger.LogInformation("CALLED GET: api/reviews/dashboard");

@@ -25,26 +25,28 @@ public partial class ReviewDbContext : DbContext
         {
             entity.HasKey(e => e.CommentId).HasName("comment_pkey");
 
-            entity.HasOne(d => d.Review).WithMany(p => p.Comments).HasConstraintName("comment_review_id_fkey");
+            entity.HasOne(d => d.Review)
+            .WithMany(p => p.Comments)
+            .HasConstraintName("comment_review_id_fkey")
+            .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<CommentParent>(entity =>
         {
             entity.HasKey(cp => new { cp.CommentId, cp.CommentParentId });
 
-            // This relationship represents the child comment in the pair
+
             entity.HasOne(d => d.Comment)
                   .WithMany()
-                  .HasForeignKey(d => d.CommentId) // Explicitly define the foreign key
+                  .HasForeignKey(d => d.CommentId)
                   .HasConstraintName("comment_parent_comment_id_fkey")
-                  .OnDelete(DeleteBehavior.Cascade); // Keep cascade for this one
+                  .OnDelete(DeleteBehavior.Cascade);
 
-            // This relationship represents the parent comment in the pair
             entity.HasOne(d => d.CommentParentNavigation)
                   .WithMany()
-                  .HasForeignKey(d => d.CommentParentId) // Explicitly define the foreign key
+                  .HasForeignKey(d => d.CommentParentId)
                   .HasConstraintName("comment_parent_comment_parent_id_fkey")
-                  .OnDelete(DeleteBehavior.NoAction); // THIS IS THE FIX: Break the cascade cycle
+                  .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Review>(entity =>

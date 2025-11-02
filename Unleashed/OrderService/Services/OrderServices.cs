@@ -223,6 +223,48 @@ namespace OrderService.Services
             };
         }
 
+        public async Task<IEnumerable<OrderDto>> GetEligibleOrdersForReviewAsync(Guid userId, Guid productId)
+        {
+            var completedOrders = await _orderRepository.GetCompletedOrdersByUserIdAsync(userId);
+            if (!completedOrders.Any())
+            {
+                return Enumerable.Empty<OrderDto>();
+            }
+
+            var allVariationIds = completedOrders.SelectMany(o => o.OrderVariations.Select(v => v.VariationId)).Distinct().ToList();
+
+            if (!allVariationIds.Any())
+            {
+                return Enumerable.Empty<OrderDto>();
+            }
+
+            var variationDetails = await _productApiClient.GetDetailsByIdsAsync(allVariationIds);
+
+            if (variationDetails == null || !variationDetails.Any())
+            {
+                _logger.LogWarning("No variation details found from ProductService for variation IDs: {VariationIds}", string.Join(", ", allVariationIds));
+                return Enumerable.Empty<OrderDto>();
+            }
+
+            var variationDetailsWithProduct = variationDetails.ToDictionary(v => v.VariationId);
+
+            var eligibleOrders = new List<Order>();
+
+            foreach (var order in completedOrders)
+            {
+                bool hasProduct = order.OrderVariations.Any(ov =>
+                    variationDetailsWithProduct.ContainsKey(ov.VariationId) &&
+                    variationDetailsWithProduct[ov.VariationId].ProductId == productId);
+
+                if (hasProduct)
+                {
+                    eligibleOrders.Add(order);
+                }
+            }
+
+            return _mapper.Map<IEnumerable<OrderDto>>(eligibleOrders);
+        }
+
         // Các hàm chưa triển khai
         public Task ReturnOrderAsync(Guid orderId) => throw new NotImplementedException();
         public Task InspectReturnedOrderAsync(Guid orderId) => throw new NotImplementedException();
