@@ -48,18 +48,21 @@ namespace OrderService.Controllers
         // GET: api/order/my-orders (Lấy đơn hàng của người dùng đang đăng nhập)
         [HttpGet("my-orders")]
         // [Authorize(Roles = "CUSTOMER")]
-        public async Task<IActionResult> GetMyOrders()
+        public async Task<IActionResult> GetMyOrders(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
         {
-            // Lấy UserId từ token/context
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             {
                 return Unauthorized();
             }
 
-            var orders = await _orderService.GetOrdersByCustomerIdAsync(userId);
-            return Ok(orders);
+            var pagedResult = await _orderService.GetOrdersByCustomerIdAsync(userId, pageNumber, pageSize);
+
+            return Ok(pagedResult);
         }
+
 
         // POST: api/order/check-stock
         [HttpPost("check-stock")]
@@ -84,15 +87,14 @@ namespace OrderService.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            //// Gán UserId của người dùng đang đăng nhập
+            // Gán UserId của người dùng đang đăng nhập
             //var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             //if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
             //{
             //    return Unauthorized();
             //}
             //createOrderDto.UserId = Guid.Parse(userIdString);
-            createOrderDto.UserId = Guid.Parse("910FF8D2-05BE-4F7B-9E8C-B053FBF6F1F6");
-            
+            createOrderDto.UserId = createOrderDto.UserId;
             try
             {
                 var order = await _orderService.CreateOrderAsync(createOrderDto);
@@ -136,7 +138,7 @@ namespace OrderService.Controllers
 
             try
             {
-                await _orderService.ReviewOrderByStaffAsync(orderId, staffId, reviewDto.IsApproved);
+                await _orderService.ReviewOrderByStaffAsync(orderId, staffId, reviewDto.orderStatus);
                 return Ok(new { Message = "Đã duyệt đơn hàng." });
             }
             catch (KeyNotFoundException ex)

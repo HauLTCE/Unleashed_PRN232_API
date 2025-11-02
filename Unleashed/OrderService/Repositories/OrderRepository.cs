@@ -50,7 +50,9 @@ namespace OrderService.Repositories
 
         public async Task<Order?> FindAsync(Guid id)
         {
-            return await _context.Orders.FindAsync(id);
+            return await _context.Orders
+                .Include(o => o.OrderVariations)
+                .FirstOrDefaultAsync(o => o.OrderId == id);
         }
 
         public async Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(Guid customerId)
@@ -141,6 +143,20 @@ namespace OrderService.Repositories
             var items = await query.Skip(page * size).Take(size).ToListAsync();
 
             return new PagedResult<Order> { Items = items, TotalItems = totalItems };
+        }
+
+        public async Task<(IEnumerable<Order>, int total)> GetOrdersByUserIdAsync(Guid userId, int page, int size)
+        {
+            var query = _context.Orders
+                .Include(o => o.OrderStatus)
+                .Include(o => o.PaymentMethod)
+                .Where(o => o.UserId == userId)
+                .AsQueryable();
+
+            var totalItems = await query.CountAsync();
+            var items = await query.Skip((page - 1) * size).Take(size).ToListAsync();
+
+            return  (items,totalItems);
         }
     }
 }

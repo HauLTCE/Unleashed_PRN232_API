@@ -60,27 +60,14 @@ builder.Services.AddHttpClient("authservice", client =>
     client.BaseAddress = new Uri("http://authservice");
 }).AddServiceDiscovery();
 
-string? productApiUrl = builder.Configuration["ServiceUrls:ProductApiBase"];
-if (string.IsNullOrEmpty(productApiUrl))
-{
-    throw new ArgumentNullException("ServiceUrls:ProductApiBase is not configured.");
-}
-
 builder.Services.AddHttpClient<IProductApiClient, ProductApiClient>(client =>
 {
-    client.BaseAddress = new Uri(productApiUrl);
+    client.BaseAddress = new Uri("http://productservice");
 }).AddServiceDiscovery();
-
-string? inventoryApiUrl = builder.Configuration["ServiceUrls:InventoryApiBase"];
-if (string.IsNullOrEmpty(inventoryApiUrl))
-{
-    throw new ArgumentNullException("ServiceUrls:InventoryApiBase is not configured.");
-}
-
 
 builder.Services.AddHttpClient<IInventoryApiClient, InventoryApiClient>(client =>
 {
-    client.BaseAddress = new Uri(inventoryApiUrl);
+    client.BaseAddress = new Uri("http://inventoryservice");
 }).AddServiceDiscovery();
 
 builder.Services.AddHttpClient("discountservice", client =>

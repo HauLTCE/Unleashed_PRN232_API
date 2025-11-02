@@ -59,7 +59,6 @@ namespace InventoryService.Controllers
         }
 
         [HttpPost("get-stock-by-ids")]
-        [Authorize(Roles = "ADMIN,STAFF")]
         public async Task<ActionResult<IEnumerable<Inventory_OrderDto>>> GetStockByIds([FromBody] IEnumerable<int> variationIds)
         {
             // 1. Check if the input list is empty
@@ -74,6 +73,37 @@ namespace InventoryService.Controllers
             // 3. Return the list of stock levels
             return Ok(stockVariations);
         }
+
+        [HttpPut("decrease-stocks")]
+        public async Task<IActionResult> DecreaseStocksAsync([FromBody] List<Order_InventoryDto> orderList)
+        {
+            if (orderList == null || orderList.Count == 0)
+                return BadRequest(new { message = "Order list cannot be empty." });
+
+            try
+            {
+                await _stockVariationService.DecreaseStocksAsync(orderList);
+                return NoContent(); // 204: successful but no response body
+            }
+            catch (InvalidOperationException ex)
+            { 
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex) 
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex) // unexpected server error
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    message = "An unexpected error occurred.",
+                    details = ex.Message
+                });
+            }
+        }
+
+
 
         // PUT: api/StockVariations/1/2
         [HttpPut("{stockId}/{variationId}")]
@@ -134,5 +164,6 @@ namespace InventoryService.Controllers
             }
             return Ok(stockVariations);
         }
+
     }
 }

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.SignalR.Protocol;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Clients.IClients;
 using OrderService.Dtos;
@@ -19,7 +20,8 @@ namespace OrderService.Services
         private readonly IProductApiClient _productApiClient;
         private readonly IInventoryApiClient _inventoryApiClient;
         private readonly IMapper _mapper;
-        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationRepo orderVariationSingleRepository, IProductApiClient productApiClient,IInventoryApiClient inventoryApiClient, IMapper mapper)
+        private readonly ILogger<OrderServices> _logger;
+        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationRepo orderVariationSingleRepository, IProductApiClient productApiClient,IInventoryApiClient inventoryApiClient, IMapper mapper, ILogger<OrderServices> logger)
         {
             _orderRepository = orderRepository;
             _orderStatusRepository = orderStatusRepository;
@@ -27,6 +29,7 @@ namespace OrderService.Services
             _productApiClient = productApiClient;
             _inventoryApiClient = inventoryApiClient;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto)
@@ -42,49 +45,56 @@ namespace OrderService.Services
                 var variationDetails = await _productApiClient.GetDetailsByIdsAsync(variationIds)
                 ?? throw new Exception($"Variation {variationIds} not found.");
 
-
-            // 1B. Check stock from the Inventory API
-            // Convert the requested items to a dictionary for O(1) lookups
-            var requestedQuantities = createOrderDto.OrderVariations
-                .ToDictionary(ov => ov.VariationId, ov => ov.Quantity);
-
-            var currentStock = await _inventoryApiClient.GetStockByIdsAsync(variationIds);
-
-            foreach (var stockItem in currentStock)
+            if (variationDetails.Count() != variationIds.Count)
             {
-                // Now this lookup is O(1)
-                if (requestedQuantities.TryGetValue(stockItem.VariationId, out int? requestedQuantity))
-                {
-                    if (requestedQuantity > stockItem.TotalQuantity)
-                    {
-                        throw new Exception($"Not enough stock for Variation {stockItem.VariationId}. Requested: {requestedQuantity}, Available: {stockItem.TotalQuantity}.");
-                    }
-                }
+                var foundIds = variationDetails.Select(v => v.VariationId).ToHashSet();
+                var missingIds = variationIds.Where(id => !foundIds.Contains(id));
+
+                throw new KeyNotFoundException(
+                    $"Some variation IDs were not found: {string.Join(", ", missingIds)}"
+                );
             }
 
-            var order = _mapper.Map<Order>(createOrderDto);
+            // === PHASE 2: STOCK CHECK ===
+            var variationLookup = variationDetails.ToDictionary(v => v.VariationId);
+            var requestedQty = createOrderDto.OrderVariations.ToDictionary(v => v.VariationId, v => v.Quantity);
+            var stockLevels = await _inventoryApiClient.GetStockByIdsAsync(variationIds);
+            if (!stockLevels.Any() || stockLevels.Contains(null)) throw new Exception($"Not found enough stock");
+            decimal totalAmount = 0;
 
-            // 2. Thiết lập các giá trị mặc định cho đơn hàng
+            foreach (var stockItem in stockLevels)
+            {
+                if (!requestedQty.TryGetValue(stockItem.VariationId, out var qty) || qty <= 0)
+                    continue;
+
+                if (qty > stockItem.TotalQuantity)
+                    throw new InvalidOperationException(
+                        $"Not enough stock for variation {stockItem.VariationId}. Requested: {qty}, Available: {stockItem.TotalQuantity}");
+
+                if (!variationLookup.TryGetValue(stockItem.VariationId, out var variation))
+                    throw new KeyNotFoundException($"Price not found for variation {stockItem.VariationId}");
+
+                totalAmount += qty!.Value * variation.VariationPrice;
+            }
+
+            var order = _mapper.Map<Order>(createOrderDto) ?? throw new Exception("Mapping failed");
+
+
             order.OrderId = Guid.NewGuid();
             order.OrderDate = DateTimeOffset.UtcNow;
-            order.OrderTrackingNumber = GenerateTrackingNumber(); // Hàm tạo mã vận đơn
-            order.OrderTransactionReference = Guid.NewGuid().ToString("N").Substring(0, 16); // Mã giao dịch tạm
-            order.OrderStatusId = 1; // Giả định ID 1 là "PENDING"
-            order.OrderTax = 0.05m; // 5% tax
+            order.OrderTrackingNumber = GenerateTrackingNumber() ?? throw new Exception("Tracking number failed");
+            order.OrderTransactionReference = Guid.NewGuid().ToString("N")[..16];
+            order.OrderStatusId = 1;
+            order.OrderTax = 0.05m; 
+            order.OrderTotalAmount = Math.Round(totalAmount * 1.05m, 2);
 
-            // 3. Xử lý giảm giá (nếu có)
-            // await _discountService.ApplyDiscountAsync(order, createOrderDto.DiscountCode);
+            if (order.OrderVariations.Count <= 0) throw new Exception("No variations");
 
-            await _orderRepository.CreateAsync(order);
-
- 
-
-            // 5. Xử lý thanh toán
-            // var paymentResult = await _paymentService.ProcessPayment(order, createOrderDto.PaymentMethodId);
-            // order.OrderTransactionReference = paymentResult.TransactionId;
-
-            // 6. Trừ sản phẩm khỏi kho
-            // await _stockService.ReserveStockForOrderAsync(order);
+            if (createOrderDto.DiscountId != null)
+            {
+                // await _discountService.ApplyDiscountAsync(order, createOrderDto.DiscountCode);
+            }
+            await _orderRepository.CreateAsync(order);   
 
             await _orderRepository.SaveAsync();
 
@@ -130,7 +140,7 @@ namespace OrderService.Services
             }
         }
 
-        public async Task ReviewOrderByStaffAsync(Guid orderId, Guid staffId, bool isApproved)
+        public async Task ReviewOrderByStaffAsync(Guid orderId, Guid staffId, int orderStatus)
         {
             var order = await _orderRepository.FindAsync(orderId);
             if (order == null) throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
@@ -139,18 +149,19 @@ namespace OrderService.Services
             {
                 throw new InvalidOperationException("Chỉ có thể duyệt đơn hàng đang chờ xử lý.");
             }
-
+            if(orderStatus == 2)
+            {
+                try
+                {
+                    await _inventoryApiClient.DecreaseStocksAsync([.. order.OrderVariations]);
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+            }
             order.InchargeEmployeeId = staffId;
-            if (isApproved)
-            {
-                order.OrderStatusId = 2;
-            }
-            else
-            {
-                order.OrderStatusId = 7;
-                // Hoàn kho
-                // await _stockService.ReturnStockFromOrderAsync(order);
-            }
+            order.OrderStatusId = orderStatus;
             _orderRepository.Update(order);
             await _orderRepository.SaveAsync();
         }
@@ -201,11 +212,15 @@ namespace OrderService.Services
             return _mapper.Map<OrderDto>(order);
         }
 
-        public async Task<IEnumerable<OrderDto>> GetOrdersByCustomerIdAsync(Guid customerId)
+        public async Task<PagedResult<OrderDto>> GetOrdersByCustomerIdAsync(Guid userId, int page, int size)
         {
-            // Nên sử dụng phương thức phân trang ở trên thay vì tạo hàm mới
-            var pagedResult = await _orderRepository.GetOrdersAsync(null, null, null, 0, 100); // Lấy 100 đơn hàng gần nhất
-            return _mapper.Map<IEnumerable<OrderDto>>(pagedResult.Items.Where(o => o.UserId == customerId));
+             (var result, var total) = await _orderRepository.GetOrdersByUserIdAsync(userId, page, size);
+
+            return new PagedResult<OrderDto>()
+            {
+                Items = [.. _mapper.Map<IEnumerable<OrderDto>>(result)],
+                TotalItems = total
+            };
         }
 
         // Các hàm chưa triển khai
