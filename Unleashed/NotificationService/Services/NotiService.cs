@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using NotificationService.Clients.IClients;
 using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.DTOs.PagedResponse;
+using NotificationService.Exceptions;
 using NotificationService.Models;
 using NotificationService.Repositories.IRepositories;
 using NotificationService.Services.IServices;
@@ -13,11 +15,15 @@ namespace NotificationService.Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly IMapper _mapper;
+        private readonly IAuthApiClient _authApiClient;
 
-        public NotiService(INotificationRepository notificationRepository, IMapper mapper)
+        private readonly string keyn = "AAHNCO198486";
+
+        public NotiService(INotificationRepository notificationRepository, IMapper mapper, IAuthApiClient authApiClient)
         {
             _notificationRepository = notificationRepository;
             _mapper = mapper;
+            _authApiClient = authApiClient;
         }
 
         [Authorize(Roles = "ADMIN, STAFF")]
@@ -48,6 +54,33 @@ namespace NotificationService.Services
             }
 
             return null; // Failed to save
+        }
+
+        public async Task<NotificationDTO?> CreateNotificationSystem(CreateNotificationDTO createDto, string key)
+        {
+            if (key == null) throw new NotFoundException("Key not found.");
+
+            if (key != keyn) throw new ForbiddenException("Key not correct.");
+
+            var notification = _mapper.Map<Notification>(createDto);
+
+            var user = await _authApiClient.GetUserByUsernameAsync("System-chan");
+
+            if (user == null) throw new NotFoundException("System credential not found.");
+
+            createDto.UserIdSender = user.UserId;
+
+            if (!await _notificationRepository.CreateAsync(notification))
+            {
+                return null;
+            }
+
+            if (await _notificationRepository.SaveAsync())
+            {
+                return _mapper.Map<NotificationDTO>(notification);
+            }
+
+            return null;
         }
 
         [Authorize(Roles = "ADMIN, STAFF")]

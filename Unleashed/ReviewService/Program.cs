@@ -62,7 +62,7 @@ builder.Services.AddHttpClient<IOrderServiceClient, OrderServiceClient>(client =
     client.BaseAddress = new Uri("http://orderservice");
 }).AddServiceDiscovery();
 
-builder.Services.AddHttpClient("notificationservice", client =>
+builder.Services.AddHttpClient<INotificationServiceClient, NotificationServiceClient>(client =>
 {
     client.BaseAddress = new Uri("http://notificationservice");
 }).AddServiceDiscovery();
