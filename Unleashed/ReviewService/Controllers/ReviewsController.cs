@@ -22,7 +22,7 @@ namespace ReviewService.Controllers
 
         // POST: api/reviews
         [HttpPost]
-        //[Authorize(Roles = "CUSTOMER")]
+        [Authorize(Roles = "CUSTOMER")]
         public async Task<ActionResult<ReviewDto>> PostReview(CreateReviewDto reviewDto)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -103,7 +103,7 @@ namespace ReviewService.Controllers
 
         // PUT: api/Reviews/5
         [HttpPut("{id}")]
-        //[Authorize]
+        [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> PutReview(int id, UpdateReviewDto reviewDto)
         {
             var updateResult = await _reviewService.UpdateReviewAsync(id, reviewDto);
@@ -113,7 +113,7 @@ namespace ReviewService.Controllers
 
         // DELETE: api/Reviews/5
         [HttpDelete("{id}")]
-        //[Authorize(Roles = "ADMIN,STAFF")]
+        [Authorize(Roles = "ADMIN,STAFF")]
         public async Task<IActionResult> DeleteReview(int id)
         {
             var deleteResult = await _reviewService.DeleteReviewAsync(id);
@@ -123,10 +123,10 @@ namespace ReviewService.Controllers
 
         // GET: api/reviews/dashboard
         [HttpGet("dashboard")]
-        //[Authorize(Roles = "ADMIN,STAFF")]
+        [Authorize(Roles = "ADMIN,STAFF")]
         public async Task<IActionResult> GetDashboardReviews([FromQuery] int page = 0, [FromQuery] int size = 10)
         {
-            _logger.LogInformation("CALLED GET: api/reviews/dashboard");
+            //_logger.LogInformation("CALLED GET: api/reviews/dashboard");
             var result = await _reviewService.GetDashboardReviewsAsync(page, size);
             return Ok(result);
         }

@@ -19,8 +19,8 @@ namespace ReviewService.Controllers
 
         // POST: api/comments
         [HttpPost]
-        //[Authorize]
-        public async Task<ActionResult<CommentDto>> PostReply([FromQuery] Guid? userId, CreateCommentDto commentDto)
+        [Authorize(Roles = "CUSTOMER")]
+        public async Task<ActionResult<CommentDto>> PostReply(CreateCommentDto commentDto)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             Guid replyingUserId;
@@ -28,10 +28,6 @@ namespace ReviewService.Controllers
             if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
             {
                 replyingUserId = parsedUserId;
-            }
-            else if (userId.HasValue)
-            {
-                replyingUserId = userId.Value;
             }
             else
             {
@@ -44,8 +40,8 @@ namespace ReviewService.Controllers
 
         // DELETE: api/comments/5
         [HttpDelete("{id}")]
-        //[Authorize]
-        public async Task<IActionResult> DeleteComment(int id, [FromQuery] Guid? userId)
+        [Authorize(Roles = "CUSTOMER")]
+        public async Task<IActionResult> DeleteComment(int id)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             Guid currentUserId;
@@ -53,10 +49,6 @@ namespace ReviewService.Controllers
             if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
             {
                 currentUserId = parsedUserId;
-            }
-            else if (userId.HasValue)
-            {
-                currentUserId = userId.Value;
             }
             else
             {
@@ -98,8 +90,8 @@ namespace ReviewService.Controllers
 
         // PUT: api/Comments/5
         [HttpPut("{id}")]
-        //[Authorize]
-        public async Task<IActionResult> PutComment(int id, UpdateCommentDto commentDto, [FromQuery] Guid? userId)
+        [Authorize(Roles = "CUSTOMER")]
+        public async Task<IActionResult> PutComment(int id, UpdateCommentDto commentDto)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             Guid currentUserId;
@@ -107,10 +99,6 @@ namespace ReviewService.Controllers
             if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
             {
                 currentUserId = parsedUserId;
-            }
-            else if (userId.HasValue)
-            {
-                currentUserId = userId.Value;
             }
             else
             {
