@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using ReviewService.Clients.Interfaces;
 using ReviewService.DTOs.Comment;
 using ReviewService.DTOs.External;
 using ReviewService.Exceptions;
@@ -8,9 +9,8 @@ using ReviewService.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Json;
-using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace ReviewService.Services
 {
@@ -19,19 +19,28 @@ namespace ReviewService.Services
         private readonly ICommentRepository _commentRepository;
         private readonly IReviewRepository _reviewRepository;
         private readonly IMapper _mapper;
-        private readonly IHttpClientFactory _httpClientFactory;
         private readonly TimeZoneInfo _targetTimeZone;
+        private readonly IAuthServiceClient _authServiceClient;
+        private readonly IProductServiceClient _productServiceClient;
+        private readonly INotificationServiceClient _notificationServiceClient;
+        private readonly ILogger<CommentService> _logger;
 
         public CommentService(
             ICommentRepository commentRepository,
             IReviewRepository reviewRepository,
             IMapper mapper,
-            IHttpClientFactory httpClientFactory)
+            IAuthServiceClient authServiceClient,
+            IProductServiceClient productServiceClient,
+            INotificationServiceClient notificationServiceClient,
+            ILogger<CommentService> logger)
         {
             _commentRepository = commentRepository;
             _reviewRepository = reviewRepository;
             _mapper = mapper;
-            _httpClientFactory = httpClientFactory;
+            _authServiceClient = authServiceClient;
+            _productServiceClient = productServiceClient;
+            _notificationServiceClient = notificationServiceClient;
+            _logger = logger;
             _targetTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
         }
 
@@ -67,30 +76,45 @@ namespace ReviewService.Services
 
             await _commentRepository.AddCommentParentLinkAsync(savedComment.CommentId, parentComment.CommentId);
 
-            _ = Task.Run(async () => {
-                var authClient = _httpClientFactory.CreateClient("authservice");
-                var notificationClient = _httpClientFactory.CreateClient("notificationservice");
-                var serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                try
-                {
-                    var parentAuthor = await authClient.GetFromJsonAsync<UserDto>($"api/users/{review.UserId}", serializerOptions);
-                    var replyingUser = await authClient.GetFromJsonAsync<UserDto>($"api/users/{replyingUserId}", serializerOptions);
-
-                    if (parentAuthor != null && replyingUser != null && parentAuthor.Id != replyingUser.Id)
-                    {
-                        var notification = new NotificationRequestDto
-                        {
-                            NotificationTitle = "New Reply To Your Comment",
-                            NotificationContent = $"{replyingUser.Username} replied to your comment.",
-                            UserIds = new List<string> { parentAuthor.Id.ToString() }
-                        };
-                        await notificationClient.PostAsJsonAsync("api/notifications", notification);
-                    }
-                }
-                catch { }
-            });
+            _ = SendReplyNotificationAsync(review, replyingUserId);
 
             return _mapper.Map<CommentDto>(savedComment);
+        }
+
+        private async Task SendReplyNotificationAsync(Review review, Guid replyingUserId)
+        {
+            try
+            {
+                if (review.UserId == null || review.ProductId == null) return;
+
+                if (review.UserId.Value == replyingUserId) return;
+
+                var reviewAuthorTask = _authServiceClient.GetUsersByIdsAsync(new[] { review.UserId.Value });
+                var replyingUserTask = _authServiceClient.GetUsersByIdsAsync(new[] { replyingUserId });
+                var productTask = _productServiceClient.GetProductsByIdsAsync(new[] { review.ProductId.Value });
+
+                await Task.WhenAll(reviewAuthorTask, replyingUserTask, productTask);
+
+                var reviewAuthor = reviewAuthorTask.Result.FirstOrDefault();
+                var replyingUser = replyingUserTask.Result.FirstOrDefault();
+                var product = productTask.Result.FirstOrDefault();
+
+                if (reviewAuthor != null && replyingUser != null && product != null)
+                {
+                    var notification = new CreateNotificationForUsersRequestDto
+                    {
+                        NotificationTitle = "New Reply To Your Comment",
+                        NotificationContent = $"{replyingUser.Username} has replied to your comment on {product.ProductName}.",
+                        Usernames = new List<string> { reviewAuthor.Username }
+                    };
+
+                    await _notificationServiceClient.CreateNotificationForUsersAsync(notification);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send reply notification for review {ReviewId}", review.ReviewId);
+            }
         }
 
         public async Task<bool> UpdateCommentAsync(int id, UpdateCommentDto commentDto, Guid currentUserId)

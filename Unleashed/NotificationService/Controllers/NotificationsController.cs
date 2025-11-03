@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using NotificationService.DTOs;
 using NotificationService.DTOs.NotificationDTOs;
-using NotificationService.Services.IServices;
 // Import PagedResponse DTO
 using NotificationService.DTOs.PagedResponse;
-using Microsoft.AspNetCore.Authorization;
+using NotificationService.Services.IServices;
 
 namespace NotificationService.Controllers
 {
@@ -19,8 +20,23 @@ namespace NotificationService.Controllers
             _notificationService = notificationService;
         }
 
+        [HttpPost("for-users")]
+        [ProducesResponseType(typeof(NotificationDTO), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [Authorize(Roles = "ADMIN, STAFF")]
+        public async Task<ActionResult<NotificationDTO>> PostNotificationForUsers(CreateNotificationForUsersDTO createDto)
+        {
+            var newNotification = await _notificationService.CreateNotificationForUsers(createDto);
+
+            if (newNotification == null)
+            {
+                return BadRequest("Failed to create the notification for users.");
+            }
+
+            return CreatedAtAction(nameof(GetNotification), new { id = newNotification.NotificationId }, newNotification);
+        }
+
         // GET: api/Notifications
-        // This endpoint is now updated to support pagination and filtering
         [HttpGet]
         [ProducesResponseType(typeof(PagedResponse<NotificationDTO>), StatusCodes.Status200OK)]
         [Authorize(Roles ="ADMIN, STAFF")]
@@ -71,6 +87,20 @@ namespace NotificationService.Controllers
             }
 
             return CreatedAtAction(nameof(GetNotification), new { id = newNotification.NotificationId }, newNotification);
+        }
+
+        [HttpPost("system")]
+        [ProducesResponseType(typeof(NotificationDTO), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [AllowAnonymous]
+        public async Task<ActionResult<NotificationDTO>> PostNotificationSystem([FromBody] CreateNotificationDTO createDto, [FromHeader(Name = "Key")] string key)
+        {
+            var newNotification = await _notificationService.CreateNotificationSystem(createDto, key);
+            if (newNotification == null)
+            {
+                return BadRequest("Failed to create the system notification.");
+            }
+            return Ok(newNotification);
         }
 
         // PUT: api/Notifications/5
