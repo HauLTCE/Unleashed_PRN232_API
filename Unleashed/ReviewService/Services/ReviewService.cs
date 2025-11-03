@@ -53,18 +53,18 @@ namespace ReviewService.Services
 
             if (await _reviewRepository.ExistsByProductAndOrderAndUserAsync(reviewDto.ProductId.Value, reviewDto.OrderId, reviewDto.UserId.Value))
             {
-                //throw new BadRequestException("You have already reviewed this product for this specific order.");
+                throw new BadRequestException("You have already reviewed this product for this specific order.");
             }
 
             var order = await _orderServiceClient.GetOrderByIdAsync(reviewDto.OrderId);
 
             if (order == null) throw new NotFoundException("Order not found or OrderService is unavailable.");
 
-            //if (order.UserId != currentUserId) throw new ForbiddenException("This order does not belong to you.");
+            if (order.UserId != currentUserId) throw new ForbiddenException("This order does not belong to you.");
 
-            //if (order.OrderStatus != 4) throw new ForbiddenException("You can only review products from completed orders.");
+            if (order.OrderStatus != 4) throw new ForbiddenException("You can only review products from completed orders.");
 
-            _logger.LogCritical(order.OrderStatus.ToString()); //BRUH ORDER STATUS IS NULL BRO THE ORDER THING IS NOT WORKING WHY EVEN GET ORDER?
+            //_logger.LogCritical(order.OrderStatus.ToString()); //BRUH ORDER STATUS IS NULL BRO THE ORDER THING IS NOT WORKING WHY EVEN GET ORDER?
 
             var reviewEntity = _mapper.Map<Review>(reviewDto);
             var newReview = await _reviewRepository.AddAsync(reviewEntity);

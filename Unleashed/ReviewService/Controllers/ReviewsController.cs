@@ -27,18 +27,18 @@ namespace ReviewService.Controllers
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            //if (string.IsNullOrEmpty(userIdClaim))
-            //{
-            //    return Unauthorized("User ID claim not found in token.");
-            //}
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("User ID claim not found in token.");
+            }
 
-            //if (!Guid.TryParse(userIdClaim, out var userId))
-            //{
-            //    return BadRequest("Invalid User ID format in token.");
-            //}
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return BadRequest("Invalid User ID format in token.");
+            }
 
-            
-            var userId = Guid.Parse("E43DFF5D-7CAC-45C7-A699-81B48BEB33EF"); //FOR TESTING, SINCE NO UI = NO ID
+
+            //var userId = Guid.Parse("E43DFF5D-7CAC-45C7-A699-81B48BEB33EF"); //FOR TESTING, SINCE NO UI = NO ID
 
             reviewDto.UserId = userId;
 
