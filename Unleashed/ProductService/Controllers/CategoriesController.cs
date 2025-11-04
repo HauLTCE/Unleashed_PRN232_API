@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProductService.DTOs.CategoryDTOs;
 using ProductService.DTOs.Common;
 using ProductService.Services.IServices;
@@ -36,6 +37,7 @@ namespace ProductService.Controllers
 
         // PUT: api/Categories/5
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> PutCategory(int id, [FromBody] UpdateCategoryDTO updateCategoryDto)
         {
             try
@@ -56,6 +58,7 @@ namespace ProductService.Controllers
 
         // POST: api/Categories
         [HttpPost]
+        [Authorize(Roles = "ADMIN")]
         public async Task<ActionResult<CategoryDetailDTO>> PostCategory([FromBody] CreateCategoryDTO createCategoryDto)
         {
             try
@@ -75,6 +78,7 @@ namespace ProductService.Controllers
 
         // DELETE: api/Categories/5
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
             var ok = await _categoryService.DeleteCategoryAsync(id);

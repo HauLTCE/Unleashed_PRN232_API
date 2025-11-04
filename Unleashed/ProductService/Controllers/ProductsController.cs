@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProductService.DTOs.Common;
 using ProductService.DTOs.ProductDTOs;
 using ProductService.DTOs.VariationDTOs;
@@ -58,6 +59,7 @@ namespace ProductService.Controllers
 
         // PUT: api/Products/{id}
         [HttpPut("{id:guid}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> PutProduct(Guid id, [FromBody] UpdateProductDTO updateProductDto)
         {
             if (id != updateProductDto.ProductId)
@@ -82,6 +84,7 @@ namespace ProductService.Controllers
 
         // POST: api/Products
         [HttpPost]
+        [Authorize(Roles = "ADMIN")]
         public async Task<ActionResult<ProductDetailDTO>> PostProduct(CreateProductDTO createProductDto)
         {
             try
@@ -101,6 +104,7 @@ namespace ProductService.Controllers
 
         // DELETE: api/Products/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> DeleteProduct(Guid id)
         {
             var result = await _productService.DeleteProductAsync(id);

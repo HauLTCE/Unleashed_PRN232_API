@@ -19,5 +19,7 @@ namespace AuthService.Services.IServices
         Task<bool> DeleteUser(Guid id);
         Task<IEnumerable<UserSummaryDTO>> GetUsersByIdsAsync(IEnumerable<Guid> ids);
         Task<IEnumerable<Guid>> GetCustomerIds();
+
+        Task<IEnumerable<UserReviewDTO>> GetUserReviewInfosAsync(IEnumerable<Guid> userIds);
     }
 }

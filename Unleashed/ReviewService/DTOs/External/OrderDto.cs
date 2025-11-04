@@ -4,7 +4,7 @@
     {
         public Guid OrderId { get; set; }
         public Guid UserId { get; set; }
-        public int? OrderStatus { get; set; }
+        public int? OrderStatusId { get; set; }
         public DateTimeOffset OrderDate { get; set; }
         public List<OrderItemDto> OrderItems { get; set; } = new();
     }
