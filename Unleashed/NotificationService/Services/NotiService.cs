@@ -2,28 +2,85 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using NotificationService.Clients.IClients;
+using NotificationService.DTOs;
+using NotificationService.DTOs.External;
 using NotificationService.DTOs.NotificationDTOs;
 using NotificationService.DTOs.PagedResponse;
 using NotificationService.Exceptions;
 using NotificationService.Models;
 using NotificationService.Repositories.IRepositories;
 using NotificationService.Services.IServices;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace NotificationService.Services
 {
     public class NotiService : INotificationService
     {
         private readonly INotificationRepository _notificationRepository;
+        private readonly INotificationUserRepository _notificationUserRepository;
         private readonly IMapper _mapper;
         private readonly IAuthApiClient _authApiClient;
 
         private readonly string keyn = "AAHNCO198486";
 
-        public NotiService(INotificationRepository notificationRepository, IMapper mapper, IAuthApiClient authApiClient)
+        public NotiService(
+            INotificationRepository notificationRepository,
+            INotificationUserRepository notificationUserRepository,
+            IMapper mapper,
+            IAuthApiClient authApiClient)
         {
             _notificationRepository = notificationRepository;
+            _notificationUserRepository = notificationUserRepository;
             _mapper = mapper;
             _authApiClient = authApiClient;
+        }
+
+        [Authorize(Roles = "ADMIN, STAFF")]
+        public async Task<NotificationDTO?> CreateNotificationForUsers(CreateNotificationForUsersDTO createDto)
+        {
+            var notification = _mapper.Map<Notification>(createDto);
+            if (!await _notificationRepository.CreateAsync(notification))
+            {
+                return null;
+            }
+            if (!await _notificationRepository.SaveAsync())
+            {
+                return null;
+            }
+
+            var users = new List<UserDto>();
+            foreach (var username in createDto.Usernames.Distinct())
+            {
+                var user = await _authApiClient.GetUserByUsernameAsync(username);
+                if (user != null)
+                {
+                    users.Add(user);
+                }
+            }
+
+            if (!users.Any())
+            {
+                return _mapper.Map<NotificationDTO>(notification);
+            }
+
+            foreach (var user in users)
+            {
+                var notificationUser = new NotificationUser
+                {
+                    NotificationId = notification.NotificationId,
+                    UserId = user.UserId
+                };
+                await _notificationUserRepository.CreateAsync(notificationUser);
+            }
+
+            if (await _notificationUserRepository.SaveAsync())
+            {
+                return _mapper.Map<NotificationDTO>(notification);
+            }
+
+            return null; 
         }
 
         [Authorize(Roles = "ADMIN, STAFF")]
@@ -32,12 +89,14 @@ namespace NotificationService.Services
             var notifications = await _notificationRepository.All();
             return _mapper.Map<IEnumerable<NotificationDTO>>(notifications);
         }
+
         [Authorize]
         public async Task<NotificationDTO?> GetNotificationById(int id)
         {
             var notification = await _notificationRepository.FindAsync(id);
             return _mapper.Map<NotificationDTO>(notification);
         }
+
         [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<NotificationDTO?> CreateNotification(CreateNotificationDTO createDto)
         {
@@ -45,7 +104,7 @@ namespace NotificationService.Services
 
             if (!await _notificationRepository.CreateAsync(notification))
             {
-                return null; // Failed to add to context
+                return null;
             }
 
             if (await _notificationRepository.SaveAsync())
@@ -53,22 +112,20 @@ namespace NotificationService.Services
                 return _mapper.Map<NotificationDTO>(notification);
             }
 
-            return null; // Failed to save
+            return null;
         }
 
         public async Task<NotificationDTO?> CreateNotificationSystem(CreateNotificationDTO createDto, string key)
         {
             if (key == null) throw new NotFoundException("Key not found.");
-
             if (key != keyn) throw new ForbiddenException("Key not correct.");
 
             var notification = _mapper.Map<Notification>(createDto);
-
             var user = await _authApiClient.GetUserByUsernameAsync("System-chan");
 
             if (user == null) throw new NotFoundException("System credential not found.");
 
-            createDto.UserIdSender = user.UserId;
+            notification.UserIdSender = user.UserId;
 
             if (!await _notificationRepository.CreateAsync(notification))
             {
@@ -92,9 +149,7 @@ namespace NotificationService.Services
                 return false; // Not found
             }
 
-            // Map DTO values onto the existing entity
             _mapper.Map(updateDto, existingNotification);
-
             _notificationRepository.Update(existingNotification);
             return await _notificationRepository.SaveAsync();
         }
@@ -114,8 +169,6 @@ namespace NotificationService.Services
         [Authorize(Roles = "ADMIN, STAFF")]
         public async Task<PagedResponse<NotificationDTO>> GetNotificationPagedAsync(int pageNumber, int pageSize, string? searchQuery, bool? isDraft)
         {
-            // 1. Call the repository to get the raw data and total count.
-            //    Notice the repository method is now specific and accepts the parameters.
             (var notis, var totalRecords) = await _notificationRepository.GetPagedAsync(
                 pageNumber,
                 pageSize,
@@ -123,11 +176,8 @@ namespace NotificationService.Services
                 isDraft
             );
 
-            // 2. Perform business logic (mapping) in the service layer.
             var notiDtos = _mapper.Map<List<NotificationDTO>>(notis);
-            // Or manually: var userDtos = users.Select(u => new UserDTO { ... }).ToList();
 
-            // 3. Create the final PagedResponse.
             var pagedResponse = new PagedResponse<NotificationDTO>(
                 notiDtos,
                 totalRecords,
