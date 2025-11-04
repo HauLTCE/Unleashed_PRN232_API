@@ -71,7 +71,7 @@ namespace AuthService.Controllers
         }
 
         // GET: api/Users/by-username/me
-        [HttpGet("by-username/{username}")] //what the fuck bro?
+        [HttpGet("by-username/{username}")]
         [ProducesResponseType(typeof(ImportServiceUserDTO), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
