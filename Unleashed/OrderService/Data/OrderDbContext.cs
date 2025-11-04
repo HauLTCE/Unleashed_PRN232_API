@@ -38,6 +38,17 @@ public partial class OrderDbContext : DbContext
         modelBuilder.Entity<OrderStatus>(entity =>
         {
             entity.HasKey(e => e.OrderStatusId).HasName("order_status_pkey");
+            entity.HasData(
+                new OrderStatus { OrderStatusId = 1, OrderStatusName = "PENDING" },
+                new OrderStatus { OrderStatusId = 2, OrderStatusName = "PROCESSING" },
+                new OrderStatus { OrderStatusId = 3, OrderStatusName = "SHIPPING" },
+                new OrderStatus { OrderStatusId = 4, OrderStatusName = "COMPLETED" },
+                new OrderStatus { OrderStatusId = 5, OrderStatusName = "CANCELLED" },
+                new OrderStatus { OrderStatusId = 6, OrderStatusName = "RETURNED" },
+                new OrderStatus { OrderStatusId = 7, OrderStatusName = "DENIED" },
+                new OrderStatus { OrderStatusId = 8, OrderStatusName = "INSPECTION" },
+                new OrderStatus { OrderStatusId = 9, OrderStatusName = "RETURNING" }
+            );
         });
 
         modelBuilder.Entity<OrderVariation>(entity =>
@@ -52,11 +63,20 @@ public partial class OrderDbContext : DbContext
         modelBuilder.Entity<PaymentMethod>(entity =>
         {
             entity.HasKey(e => e.PaymentMethodId).HasName("payment_method_pkey");
+            entity.HasData(
+                new PaymentMethod { PaymentMethodId = 1, PaymentMethodName = "COD" },
+                new PaymentMethod { PaymentMethodId = 2, PaymentMethodName = "VNPAY" },
+                new PaymentMethod { PaymentMethodId = 3, PaymentMethodName = "TRANSFER" }
+            );
         });
 
         modelBuilder.Entity<ShippingMethod>(entity =>
         {
             entity.HasKey(e => e.ShippingMethodId).HasName("shipping_method_pkey");
+            entity.HasData(
+                new ShippingMethod { ShippingMethodId = 1, ShippingMethodName = "EXPRESS" },
+                new ShippingMethod { ShippingMethodId = 2, ShippingMethodName = "STANDARD" }
+            );
         });
 
         OnModelCreatingPartial(modelBuilder);
