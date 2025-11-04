@@ -60,7 +60,7 @@ namespace OrderService.Services
             var requestedQty = createOrderDto.OrderVariations.ToDictionary(v => v.VariationId, v => v.Quantity);
             var stockLevels = await _inventoryApiClient.GetStockByIdsAsync(variationIds);
             if (!stockLevels.Any() || stockLevels.Contains(null)) throw new Exception($"Not found enough stock");
-            decimal totalAmount = 0;
+            double totalAmount = 0;
 
             foreach (var stockItem in stockLevels)
             {
@@ -86,7 +86,7 @@ namespace OrderService.Services
             order.OrderTransactionReference = Guid.NewGuid().ToString("N")[..16];
             order.OrderStatusId = 1;
             order.OrderTax = 0.05m; 
-            order.OrderTotalAmount = Math.Round(totalAmount * 1.05m, 2);
+            order.OrderTotalAmount = Convert.ToDecimal(Math.Round(totalAmount * 1.05, 2));
 
             if (order.OrderVariations.Count <= 0) throw new Exception("No variations");
 

@@ -127,6 +127,53 @@ namespace OrderService.Migrations
                         .HasName("order_status_pkey");
 
                     b.ToTable("order_status");
+
+                    b.HasData(
+                        new
+                        {
+                            OrderStatusId = 1,
+                            OrderStatusName = "PENDING"
+                        },
+                        new
+                        {
+                            OrderStatusId = 2,
+                            OrderStatusName = "PROCESSING"
+                        },
+                        new
+                        {
+                            OrderStatusId = 3,
+                            OrderStatusName = "SHIPPING"
+                        },
+                        new
+                        {
+                            OrderStatusId = 4,
+                            OrderStatusName = "COMPLETED"
+                        },
+                        new
+                        {
+                            OrderStatusId = 5,
+                            OrderStatusName = "CANCELLED"
+                        },
+                        new
+                        {
+                            OrderStatusId = 6,
+                            OrderStatusName = "RETURNED"
+                        },
+                        new
+                        {
+                            OrderStatusId = 7,
+                            OrderStatusName = "DENIED"
+                        },
+                        new
+                        {
+                            OrderStatusId = 8,
+                            OrderStatusName = "INSPECTION"
+                        },
+                        new
+                        {
+                            OrderStatusId = 9,
+                            OrderStatusName = "RETURNING"
+                        });
                 });
 
             modelBuilder.Entity("OrderService.Models.OrderVariation", b =>
@@ -176,6 +223,23 @@ namespace OrderService.Migrations
                         .HasName("payment_method_pkey");
 
                     b.ToTable("payment_method");
+
+                    b.HasData(
+                        new
+                        {
+                            PaymentMethodId = 1,
+                            PaymentMethodName = "COD"
+                        },
+                        new
+                        {
+                            PaymentMethodId = 2,
+                            PaymentMethodName = "VNPAY"
+                        },
+                        new
+                        {
+                            PaymentMethodId = 3,
+                            PaymentMethodName = "TRANSFER"
+                        });
                 });
 
             modelBuilder.Entity("OrderService.Models.ShippingMethod", b =>
@@ -196,6 +260,18 @@ namespace OrderService.Migrations
                         .HasName("shipping_method_pkey");
 
                     b.ToTable("shipping_method");
+
+                    b.HasData(
+                        new
+                        {
+                            ShippingMethodId = 1,
+                            ShippingMethodName = "EXPRESS"
+                        },
+                        new
+                        {
+                            ShippingMethodId = 2,
+                            ShippingMethodName = "STANDARD"
+                        });
                 });
 
             modelBuilder.Entity("OrderService.Models.Order", b =>

@@ -8,7 +8,7 @@ namespace OrderService.Dtos
         public int? SaleId { get; set; }
         public int? Quantity { get; set; }
 
-        public decimal VariationPriceAtPurchase { get; set; }
+        public double VariationPriceAtPurchase { get; set; }
     }
 
     public class CreateOrderVariationDto
@@ -21,6 +21,6 @@ namespace OrderService.Dtos
 
         public int? SaleId { get; set; }
         [Required]
-        public decimal VariationPriceAtPurchase { get; set; }
+        public double VariationPriceAtPurchase { get; set; }
     }
 }
