@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProductService.DTOs.BrandDTOs;
 using ProductService.DTOs.Common;
 using ProductService.Services.IServices;
@@ -7,6 +8,7 @@ namespace ProductService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+
     public class BrandsController : ControllerBase
     {
         private readonly IBrandService _brandService;
@@ -33,9 +35,9 @@ namespace ProductService.Controllers
             if (brand == null) return NotFound();
             return Ok(brand);
         }
-
         // PUT: api/Brands/5
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> PutBrand(int id, [FromBody] UpdateBrandDTO updateBrandDto)
         {
             try
@@ -53,9 +55,9 @@ namespace ProductService.Controllers
                 return StatusCode(500, "An error occurred while updating the brand");
             }
         }
-
         // POST: api/Brands
         [HttpPost]
+        [Authorize(Roles = "ADMIN")]
         public async Task<ActionResult<BrandDetailDTO>> PostBrand([FromBody] CreateBrandDTO createBrandDto)
         {
             try
@@ -72,9 +74,9 @@ namespace ProductService.Controllers
                 return StatusCode(500, "An error occurred while creating the brand");
             }
         }
-
         // DELETE: api/Brands/5
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "ADMIN")]
         public async Task<IActionResult> DeleteBrand(int id)
         {
             var ok = await _brandService.DeleteBrandAsync(id);

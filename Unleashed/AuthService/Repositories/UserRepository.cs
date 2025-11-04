@@ -1,4 +1,5 @@
 ﻿using AuthService.Data;
+using AuthService.DTOs.UserDTOs;
 using AuthService.Models;
 using AuthService.Repositories.IRepositories;
 using Microsoft.EntityFrameworkCore;
@@ -146,6 +147,24 @@ namespace AuthService.Repositories
                                        .Include(u => u.Role)
                                        .Where(u => u.RoleId == roleId)
                                        .ToListAsync();
+        }
+        public async Task<IEnumerable<UserReviewDTO>> GetUserReviewInfoByIdsAsync(IEnumerable<Guid> userIds)
+        {
+            if (userIds == null || !userIds.Any())
+            {
+                return Enumerable.Empty<UserReviewDTO>();
+            }
+
+            // Dùng .Select() để chỉ lấy các trường cần thiết, rất hiệu quả
+            return await _authDbContext.Users
+                .Where(u => userIds.Contains(u.UserId))
+                .Select(u => new UserReviewDTO
+                {
+                    UserId = u.UserId,
+                    UserFullname = u.UserFullname,
+                    UserImage = u.UserImage
+                })
+                .ToListAsync();
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using AuthService.Models;
+﻿using AuthService.DTOs.UserDTOs;
+using AuthService.Models;
 
 namespace AuthService.Repositories.IRepositories
 {
@@ -9,5 +10,7 @@ namespace AuthService.Repositories.IRepositories
 
         Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids);
         Task<IEnumerable<User>> GetByRoleId(int roleId);
+
+        Task<IEnumerable<UserReviewDTO>> GetUserReviewInfoByIdsAsync(IEnumerable<Guid> userIds);
     }
 }

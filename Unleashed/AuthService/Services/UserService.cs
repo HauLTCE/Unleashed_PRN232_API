@@ -165,5 +165,9 @@ namespace AuthService.Services
             var users = await _userRepository.GetByRoleId(2);
             return [.. users.Select(u=>u.UserId)];
         }
+        public async Task<IEnumerable<UserReviewDTO>> GetUserReviewInfosAsync(IEnumerable<Guid> userIds)
+        {
+            return await _userRepository.GetUserReviewInfoByIdsAsync(userIds);
+        }
     }
 }

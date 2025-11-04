@@ -62,7 +62,7 @@ namespace ReviewService.Services
 
             if (order.UserId != currentUserId) throw new ForbiddenException("This order does not belong to you.");
 
-            if (order.OrderStatus != 4) throw new ForbiddenException("You can only review products from completed orders.");
+            if (order.OrderStatusId != 4) throw new ForbiddenException("You can only review products from completed orders.");
 
             //_logger.LogCritical(order.OrderStatus.ToString()); //BRUH ORDER STATUS IS NULL BRO THE ORDER THING IS NOT WORKING WHY EVEN GET ORDER?
 
@@ -146,7 +146,7 @@ namespace ReviewService.Services
             return new PagedResult<ProductReviewDto>(dtos, pagedReviews.TotalCount);
         }
 
-        public async Task<IEnumerable<ReviewEligibilityDto>> GetReviewEligibilityAsync(Guid productId, Guid userId)
+        public async Task<bool> GetReviewEligibilityAsync(Guid productId, Guid userId)
         {
             List<OrderDto>? eligibleOrders;
             try
@@ -156,24 +156,23 @@ namespace ReviewService.Services
             catch (HttpRequestException)
             {
                 _logger.LogWarning("Could not check review eligibility. OrderService may be down.");
-                return new List<ReviewEligibilityDto>();
+                throw new NotFoundException("Could not check review eligibility.");
             }
 
             if (eligibleOrders == null || !eligibleOrders.Any())
             {
-                return new List<ReviewEligibilityDto>();
+                throw new BadRequestException("No eligibility order found.");
             }
 
-            var results = new List<ReviewEligibilityDto>();
             foreach (var order in eligibleOrders)
             {
                 bool exists = await _reviewRepository.ExistsByProductAndOrderAndUserAsync(productId, order.OrderId, userId);
                 if (!exists)
                 {
-                    results.Add(new ReviewEligibilityDto { OrderId = order.OrderId, OrderDate = order.OrderDate });
+                   return true;
                 }
             }
-            return results;
+            return false;
         }
 
         public async Task<bool> CheckReviewExistsAsync(Guid productId, Guid orderId, Guid userId)

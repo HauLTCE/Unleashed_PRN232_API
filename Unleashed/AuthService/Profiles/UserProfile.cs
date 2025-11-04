@@ -27,6 +27,8 @@ public class UserProfile : Profile
 
         // Mapping for creating a new user from the registration DTO.
         CreateMap<CreateUserDTO, User>();
+        CreateMap<UserReviewDTO, User>();
+        CreateMap<User, UserReviewDTO>();
         CreateMap<CreateExternalUserDTO, User>();
         // Mapping for updating an existing user.
         // This is a crucial configuration for patch/update operations.
