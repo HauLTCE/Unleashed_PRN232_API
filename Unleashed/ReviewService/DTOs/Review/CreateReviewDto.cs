@@ -7,8 +7,8 @@ namespace ReviewService.DTOs.Review
         [Required]
         public Guid? ProductId { get; set; }
 
-        [Required]
-        public Guid? UserId { get; set; }
+      /*  [Required]
+        public Guid? UserId { get; set; }*/
 
         [Required]
         public Guid OrderId { get; set; }

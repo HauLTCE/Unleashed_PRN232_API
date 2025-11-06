@@ -45,30 +45,23 @@ namespace ReviewService.Services
 
         public async Task<ReviewDto> CreateReviewAsync(CreateReviewDto reviewDto, Guid currentUserId)
         {
-            if (reviewDto.ProductId == null || reviewDto.UserId == null)
-                throw new BadRequestException("Product and User IDs cannot be null.");
+            // Kiểm tra ProductId từ DTO
+            if (reviewDto.ProductId == null)
+                throw new BadRequestException("Product ID cannot be null.");
 
-            if (currentUserId != reviewDto.UserId)
-                throw new ForbiddenException("You can only create reviews for yourself.");
+            // KHÔNG CẦN KIỂM TRA reviewDto.UserId nữa.
 
-            if (await _reviewRepository.ExistsByProductAndOrderAndUserAsync(reviewDto.ProductId.Value, reviewDto.OrderId, reviewDto.UserId.Value))
+            // Logic kiểm tra quyền và sự tồn tại của review vẫn giữ nguyên,
+            // nhưng giờ nó sử dụng currentUserId từ tham số thay vì reviewDto.UserId.
+            if (await _reviewRepository.ExistsByProductAndOrderAndUserAsync(reviewDto.ProductId.Value, reviewDto.OrderId, currentUserId))
             {
                 throw new BadRequestException("You have already reviewed this product for this specific order.");
             }
 
-            var order = await _orderServiceClient.GetOrderByIdAsync(reviewDto.OrderId);
-
-            if (order == null) throw new NotFoundException("Order not found or OrderService is unavailable.");
-
-            if (order.UserId != currentUserId) throw new ForbiddenException("This order does not belong to you.");
-
-            if (order.OrderStatusId != 4) throw new ForbiddenException("You can only review products from completed orders.");
-
-            //_logger.LogCritical(order.OrderStatus.ToString()); //BRUH ORDER STATUS IS NULL BRO THE ORDER THING IS NOT WORKING WHY EVEN GET ORDER?
-
             var reviewEntity = _mapper.Map<Review>(reviewDto);
             var newReview = await _reviewRepository.AddAsync(reviewEntity);
 
+            Comment? rootComment = null;
             if (!string.IsNullOrWhiteSpace(reviewDto.ReviewComment))
             {
                 var comment = new Comment
@@ -78,7 +71,6 @@ namespace ReviewService.Services
                     CommentCreatedAt = DateTimeOffset.UtcNow,
                     CommentUpdatedAt = DateTimeOffset.UtcNow
                 };
-                await _commentRepository.AddAsync(comment);
             }
 
             return _mapper.Map<ReviewDto>(newReview);
@@ -147,22 +139,22 @@ namespace ReviewService.Services
             return new PagedResult<ProductReviewDto>(dtos, pagedReviews.TotalCount);
         }
 
-        public async Task<bool> GetReviewEligibilityAsync(Guid productId, Guid userId)
+        public async Task<ReviewEligibilityResponseDto> GetReviewEligibilityAsync(Guid productId, Guid userId)
         {
             List<OrderDto>? eligibleOrders;
             try
             {
                 eligibleOrders = await _orderServiceClient.GetEligibleOrdersForReviewAsync(userId, productId);
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException ex)
             {
-                _logger.LogWarning("Could not check review eligibility. OrderService may be down.");
-                throw new NotFoundException("Could not check review eligibility.");
+                _logger.LogWarning(ex, "Could not check review eligibility. OrderService may be down.");
+                return new ReviewEligibilityResponseDto { IsEligible = false, Message = "Could not verify order history." };
             }
 
             if (eligibleOrders == null || !eligibleOrders.Any())
             {
-                throw new BadRequestException("No eligibility order found.");
+                return new ReviewEligibilityResponseDto { IsEligible = false, Message = "You have not purchased this product from a completed order." };
             }
 
             foreach (var order in eligibleOrders)
@@ -170,10 +162,44 @@ namespace ReviewService.Services
                 bool exists = await _reviewRepository.ExistsByProductAndOrderAndUserAsync(productId, order.OrderId, userId);
                 if (!exists)
                 {
-                   return true;
+                    // Tìm thấy đơn hàng đầu tiên chưa được review -> đủ điều kiện
+                    return new ReviewEligibilityResponseDto { IsEligible = true, EligibleOrderId = order.OrderId, Message = "You are eligible to review." };
                 }
             }
-            return false;
+
+            // Đã review tất cả các đơn hàng hợp lệ
+            return new ReviewEligibilityResponseDto { IsEligible = false, Message = "You have already reviewed this product for all your eligible orders." };
+        }
+
+        // SỬA ĐỔI PHƯƠNG THỨC NÀY (Thêm currentUserId để kiểm tra quyền)
+        public async Task<bool> UpdateReviewAsync(int id, UpdateReviewDto reviewDto, Guid currentUserId)
+        {
+            var reviewToUpdate = await _reviewRepository.GetByIdAsync(id);
+            if (reviewToUpdate == null) return false;
+
+            // KIỂM TRA QUYỀN: User chỉ được sửa review của chính mình
+            if (reviewToUpdate.UserId != currentUserId)
+            {
+                throw new ForbiddenException("You are not authorized to update this review.");
+            }
+
+            // Cập nhật rating
+            reviewToUpdate.ReviewRating = reviewDto.ReviewRating;
+            await _reviewRepository.UpdateAsync(reviewToUpdate);
+
+            // Cập nhật comment gốc liên quan
+            if (!string.IsNullOrEmpty(reviewDto.ReviewComment))
+            {
+                var rootComment = await _commentRepository.FindRootCommentByReviewIdAsync(id);
+                if (rootComment != null)
+                {
+                    rootComment.CommentContent = reviewDto.ReviewComment;
+                    rootComment.CommentUpdatedAt = DateTimeOffset.UtcNow;
+                    await _commentRepository.UpdateAsync(rootComment);
+                }
+            }
+
+            return true;
         }
 
         public async Task<bool> CheckReviewExistsAsync(Guid productId, Guid orderId, Guid userId)
@@ -190,43 +216,35 @@ namespace ReviewService.Services
                 return new PagedResult<ProductReviewDto>(new List<ProductReviewDto>(), 0);
             }
 
-            var userIds = pagedComments.Items
-                .Where(c => c.Review != null && c.Review.UserId.HasValue)
-                .Select(c => c.Review.UserId.Value)
-                .Distinct();
+            // Lấy thông tin review gốc một lần duy nhất
+            var review = await _reviewRepository.GetByIdAsync(pagedComments.Items.First().ReviewId.GetValueOrDefault());
+            var reviewAuthorId = review?.UserId;
 
-            var employeesMap = new Dictionary<Guid, UserDto>();
-            try
+            UserDto? authorInfo = null;
+            if (reviewAuthorId.HasValue)
             {
-                var employeeDetails = await _authServiceClient.GetUsersByIdsAsync(userIds);
-                if (employeeDetails != null)
+                try
                 {
-                    employeesMap = employeeDetails.ToDictionary(e => e.UserId);
+                    // Lấy thông tin của tác giả review gốc
+                    var userDetails = await _authServiceClient.GetUsersByIdsAsync(new[] { reviewAuthorId.Value });
+                    authorInfo = userDetails.FirstOrDefault();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch user details for replies.");
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to fetch user details from AuthService for replies. Partial data will be shown.");
-            }
 
-            var dtos = pagedComments.Items.Select(comment =>
+            var dtos = pagedComments.Items.Select(comment => new ProductReviewDto
             {
-                UserDto? user = null;
-                if (comment.Review != null && comment.Review.UserId.HasValue)
-                {
-                    employeesMap.TryGetValue(comment.Review.UserId.Value, out user);
-                }
-
-                return new ProductReviewDto
-                {
-                    ReviewId = comment.ReviewId ?? 0,
-                    CommentId = comment.CommentId,
-                    ReviewComment = comment.CommentContent,
-                    CreatedAt = comment.CommentCreatedAt ?? DateTimeOffset.MinValue,
-                    UpdatedAt = comment.CommentUpdatedAt ?? DateTimeOffset.MinValue,
-                    FullName = user?.UserUsername,
-                    UserImage = user?.UserImage
-                };
+                UserId = reviewAuthorId, 
+                ReviewId = comment.ReviewId ?? 0,
+                CommentId = comment.CommentId,
+                ReviewComment = comment.CommentContent,
+                CreatedAt = comment.CommentCreatedAt ?? DateTimeOffset.MinValue,
+                UpdatedAt = comment.CommentUpdatedAt ?? DateTimeOffset.MinValue,
+                FullName = authorInfo?.UserUsername,
+                UserImage = authorInfo?.UserImage
             }).ToList();
 
             return new PagedResult<ProductReviewDto>(dtos, pagedComments.TotalCount);
@@ -343,5 +361,10 @@ namespace ReviewService.Services
 
             return new PagedResult<DashboardReviewDto>(dtos, pagedReviews.TotalCount);
         }
+        public async Task<IEnumerable<ProductRatingSummaryDto>> GetProductRatingSummariesAsync(IEnumerable<Guid> productIds)
+        {
+            return await _reviewRepository.GetProductRatingSummariesAsync(productIds);
+        }
+
     }
 }

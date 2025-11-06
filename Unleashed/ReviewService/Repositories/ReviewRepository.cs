@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ReviewService.Data;
+using ReviewService.DTOs.Internal;
 using ReviewService.Helpers;
 using ReviewService.Models;
 using ReviewService.Repositories.Interfaces;
@@ -116,6 +117,30 @@ namespace ReviewService.Repositories
             var items = await query.Skip(page * size).Take(size).ToListAsync();
 
             return new PagedResult<Review>(items, totalCount);
+        }
+        public async Task<bool> HasUserReviewedProductAsync(Guid productId, Guid userId)
+        {
+            return await _context.Reviews.AnyAsync(r =>
+                r.ProductId == productId &&
+                r.UserId == userId);
+        }
+        public async Task<IEnumerable<ProductRatingSummaryDto>> GetProductRatingSummariesAsync(IEnumerable<Guid> productIds)
+        {
+            if (productIds == null || !productIds.Any())
+            {
+                return Enumerable.Empty<ProductRatingSummaryDto>();
+            }
+
+            return await _context.Reviews
+                .Where(r => r.ProductId.HasValue && productIds.Contains(r.ProductId.Value) && r.ReviewRating.HasValue)
+                .GroupBy(r => r.ProductId.Value)
+                .Select(g => new ProductRatingSummaryDto
+                {
+                    ProductId = g.Key,
+                    AverageRating = g.Average(rev => rev.ReviewRating.Value),
+                    ReviewCount = g.Count()
+                })
+                .ToListAsync();
         }
     }
 }

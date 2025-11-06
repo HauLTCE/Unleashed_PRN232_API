@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReviewService.Clients;
+using ReviewService.DTOs.Internal;
 using ReviewService.DTOs.Review;
 using ReviewService.Services.Interfaces;
 using System.Security.Claims;
@@ -40,7 +41,7 @@ namespace ReviewService.Controllers
 
             //var userId = Guid.Parse("E43DFF5D-7CAC-45C7-A699-81B48BEB33EF"); //FOR TESTING, SINCE NO UI = NO ID
 
-            reviewDto.UserId = userId;
+            /*reviewDto.UserId = userId;*/
 
             var createdReview = await _reviewService.CreateReviewAsync(reviewDto, userId);
             return CreatedAtAction(nameof(GetReview), new { id = createdReview.ReviewId }, createdReview);
@@ -79,7 +80,12 @@ namespace ReviewService.Controllers
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> CheckEligibility([FromQuery] Guid productId)
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized();
+            }
+
             var result = await _reviewService.GetReviewEligibilityAsync(productId, userId);
             return Ok(result);
         }
@@ -106,7 +112,13 @@ namespace ReviewService.Controllers
         [Authorize(Roles = "CUSTOMER")]
         public async Task<IActionResult> PutReview(int id, UpdateReviewDto reviewDto)
         {
-            var updateResult = await _reviewService.UpdateReviewAsync(id, reviewDto);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdClaim, out var currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var updateResult = await _reviewService.UpdateReviewAsync(id, reviewDto, currentUserId);
             if (!updateResult) return NotFound();
             return NoContent();
         }
@@ -129,6 +141,17 @@ namespace ReviewService.Controllers
             //_logger.LogInformation("CALLED GET: api/reviews/dashboard");
             var result = await _reviewService.GetDashboardReviewsAsync(page, size);
             return Ok(result);
+        }
+
+        [HttpPost("ratings-summary")]
+        public async Task<IActionResult> GetProductRatingSummaries([FromBody] IEnumerable<Guid> productIds)
+        {
+            if (productIds == null || !productIds.Any())
+            {
+                return Ok(Enumerable.Empty<ProductRatingSummaryDto>());
+            }
+            var summaries = await _reviewService.GetProductRatingSummariesAsync(productIds);
+            return Ok(summaries);
         }
     }
 }
