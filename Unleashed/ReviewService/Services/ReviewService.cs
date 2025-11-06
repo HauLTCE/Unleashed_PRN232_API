@@ -101,7 +101,7 @@ namespace ReviewService.Services
                 var employeeDetails = await _authServiceClient.GetUsersByIdsAsync(userIds);
                 if (employeeDetails != null)
                 {
-                    employeesMap = employeeDetails.ToDictionary(e => e.Id);
+                    employeesMap = employeeDetails.ToDictionary(e => e.UserId);
                 }
             }
             catch (Exception ex)
@@ -117,13 +117,14 @@ namespace ReviewService.Services
 
                 dtos.Add(new ProductReviewDto
                 {
+                    UserId = review.UserId,
                     ReviewId = review.ReviewId,
                     ReviewRating = review.ReviewRating,
                     ReviewComment = rootComment?.CommentContent,
                     CommentId = rootComment?.CommentId ?? 0,
                     CreatedAt = rootComment?.CommentCreatedAt ?? DateTimeOffset.MinValue,
                     UpdatedAt = rootComment?.CommentUpdatedAt ?? DateTimeOffset.MinValue,
-                    FullName = user?.Username,
+                    FullName = user?.UserUsername,
                     UserImage = user?.UserImage
                 });
             }
@@ -133,7 +134,7 @@ namespace ReviewService.Services
                 var currentUserDto = employeesMap.GetValueOrDefault(currentUserId.Value);
                 if (currentUserDto != null)
                 {
-                    var currentUserReviewIndex = dtos.FindIndex(d => d.FullName == currentUserDto.Username);
+                    var currentUserReviewIndex = dtos.FindIndex(d => d.FullName == currentUserDto.UserUsername);
                     if (currentUserReviewIndex > 0)
                     {
                         var myReview = dtos[currentUserReviewIndex];
@@ -200,7 +201,7 @@ namespace ReviewService.Services
                 var employeeDetails = await _authServiceClient.GetUsersByIdsAsync(userIds);
                 if (employeeDetails != null)
                 {
-                    employeesMap = employeeDetails.ToDictionary(e => e.Id);
+                    employeesMap = employeeDetails.ToDictionary(e => e.UserId);
                 }
             }
             catch (Exception ex)
@@ -223,7 +224,7 @@ namespace ReviewService.Services
                     ReviewComment = comment.CommentContent,
                     CreatedAt = comment.CommentCreatedAt ?? DateTimeOffset.MinValue,
                     UpdatedAt = comment.CommentUpdatedAt ?? DateTimeOffset.MinValue,
-                    FullName = user?.Username,
+                    FullName = user?.UserUsername,
                     UserImage = user?.UserImage
                 };
             }).ToList();
@@ -312,7 +313,7 @@ namespace ReviewService.Services
 
             await Task.WhenAll(usersTask, productsTask);
 
-            var usersMap = usersTask.Result.ToDictionary(u => u.Id);
+            var usersMap = usersTask.Result.ToDictionary(u => u.UserId);
             var productsMap = productsTask.Result.ToDictionary(p => p.ProductId);
 
             var dtos = new List<DashboardReviewDto>();
@@ -328,7 +329,7 @@ namespace ReviewService.Services
                     ReviewId = review.ReviewId,
                     CommentId = rootComment?.CommentId ?? 0,
                     ProductId = review.ProductId ?? Guid.Empty,
-                    UserFullname = user?.Username,
+                    UserFullname = user?.UserUsername,
                     UserImage = user?.UserImage,
                     CommentCreatedAt = rootComment?.CommentCreatedAt ?? DateTimeOffset.MinValue,
                     CommentContent = rootComment?.CommentContent,

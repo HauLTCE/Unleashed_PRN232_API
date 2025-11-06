@@ -3,6 +3,7 @@
     public class ProductReviewDto
     {
         public int ReviewId { get; set; }
+        public Guid? UserId { get; set; }
         public int CommentId { get; set; }
         public string? FullName { get; set; }
         public string? UserImage { get; set; }
