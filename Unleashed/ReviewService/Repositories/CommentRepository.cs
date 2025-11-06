@@ -32,7 +32,37 @@ namespace ReviewService.Repositories
             await _context.SaveChangesAsync();
             return comment;
         }
+        public async Task<Comment> AddReplyAsync(Comment reply, int parentId)
+        {
+            // Transaction đảm bảo cả hai thao tác cùng thành công hoặc thất bại
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Thêm comment con (reply)
+                _context.Comments.Add(reply);
+                await _context.SaveChangesAsync(); // Lưu để 'reply' có được CommentId
 
+                // 2. Tạo liên kết cha-con
+                var commentParent = new CommentParent
+                {
+                    CommentId = reply.CommentId,
+                    CommentParentId = parentId
+                };
+                _context.CommentParents.Add(commentParent);
+                await _context.SaveChangesAsync(); // Lưu liên kết
+
+                // 3. Nếu mọi thứ thành công, commit transaction
+                await transaction.CommitAsync();
+
+                return reply;
+            }
+            catch (Exception)
+            {
+                // 4. Nếu có lỗi, rollback tất cả thay đổi
+                await transaction.RollbackAsync();
+                throw; // Ném lại exception để lớp Service xử lý
+            }
+        }
         public async Task UpdateAsync(Comment comment)
         {
             _context.Entry(comment).State = EntityState.Modified;
@@ -44,6 +74,7 @@ namespace ReviewService.Repositories
             var comment = await _context.Comments.FindAsync(id);
             if (comment != null)
             {
+                // Logic xóa đệ quy nên được xử lý ở Service, Repository chỉ xóa 1 bản ghi
                 _context.Comments.Remove(comment);
                 await _context.SaveChangesAsync();
             }
@@ -62,7 +93,7 @@ namespace ReviewService.Repositories
                 CommentParentId = parentId
             };
             _context.CommentParents.Add(commentParent);
-            await _context.SaveChangesAsync();
+            //await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<Comment>> GetRepliesByParentIdAsync(int parentId)
@@ -102,9 +133,13 @@ namespace ReviewService.Repositories
 
         public async Task DeleteParentLinkAsync(int commentId)
         {
-            var links = _context.CommentParents.Where(cp => cp.CommentId == commentId);
-            _context.CommentParents.RemoveRange(links);
-            await _context.SaveChangesAsync();
+            // Sửa lại để xóa đúng bản ghi
+            var links = _context.CommentParents.Where(cp => cp.CommentId == commentId || cp.CommentParentId == commentId);
+            if (links.Any())
+            {
+                _context.CommentParents.RemoveRange(links);
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task<Comment?> FindRootCommentByReviewIdAsync(int reviewId)

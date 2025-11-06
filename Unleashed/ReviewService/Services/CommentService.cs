@@ -58,13 +58,18 @@ namespace ReviewService.Services
             if (parentComment == null)
                 throw new NotFoundException("Parent comment not found.");
 
-            if (!parentComment.ReviewId.HasValue)
-                throw new InvalidOperationException("Parent comment is not linked to a review.");
+            var review = await _reviewRepository.GetByIdAsync(parentComment.ReviewId.GetValueOrDefault());
+            if (review == null || !review.ProductId.HasValue)
+                throw new NotFoundException("Associated review or product not found.");
 
-            var review = await _reviewRepository.GetByIdAsync(parentComment.ReviewId.Value);
-            if (review == null) throw new NotFoundException("Associated review not found.");
+            // LOGIC MỚI: KIỂM TRA QUYỀN REPLY
+            bool hasReviewed = await _reviewRepository.HasUserReviewedProductAsync(review.ProductId.Value, replyingUserId);
+            if (!hasReviewed)
+            {
+                throw new ForbiddenException("You must have reviewed this product to be able to reply.");
+            }
 
-            var currentTime = GetCurrentTimeInTargetZone();
+            var currentTime = DateTimeOffset.UtcNow; // Sử dụng UtcNow cho nhất quán
             var newCommentEntity = new Comment
             {
                 ReviewId = parentComment.ReviewId,
@@ -72,13 +77,16 @@ namespace ReviewService.Services
                 CommentCreatedAt = currentTime,
                 CommentUpdatedAt = currentTime
             };
-            var savedComment = await _commentRepository.AddAsync(newCommentEntity);
 
-            await _commentRepository.AddCommentParentLinkAsync(savedComment.CommentId, parentComment.CommentId);
+            // SỬ DỤNG PHƯƠNG THỨC REPO MỚI
+            var savedComment = await _commentRepository.AddReplyAsync(newCommentEntity, parentComment.CommentId);
 
-            _ = SendReplyNotificationAsync(review, replyingUserId);
+            // Map kết quả
+            var resultDto = _mapper.Map<CommentDto>(savedComment);
+            resultDto.ParentCommentId = parentComment.CommentId; // Gán ParentId
+            resultDto.userId = review.UserId; // Gán UserId từ review gốc
 
-            return _mapper.Map<CommentDto>(savedComment);
+            return resultDto;
         }
 
         private async Task SendReplyNotificationAsync(Review review, Guid replyingUserId)
@@ -122,9 +130,15 @@ namespace ReviewService.Services
             var commentToUpdate = await _commentRepository.GetByIdAsync(id);
             if (commentToUpdate == null) return false;
 
-            _mapper.Map(commentDto, commentToUpdate);
-            commentToUpdate.CommentUpdatedAt = GetCurrentTimeInTargetZone();
+            var review = await _reviewRepository.GetByIdAsync(commentToUpdate.ReviewId.GetValueOrDefault());
+            // Chỉ chủ nhân review gốc mới được sửa
+            if (review == null || review.UserId != currentUserId)
+            {
+                throw new ForbiddenException("You are not authorized to update this comment.");
+            }
 
+            _mapper.Map(commentDto, commentToUpdate);
+            commentToUpdate.CommentUpdatedAt = DateTimeOffset.UtcNow;
             await _commentRepository.UpdateAsync(commentToUpdate);
             return true;
         }
@@ -175,17 +189,19 @@ namespace ReviewService.Services
             if (commentToDelete == null) return false;
 
             var review = await _reviewRepository.GetByIdAsync(commentToDelete.ReviewId.GetValueOrDefault());
+            if (review == null) return false;
 
-            bool isAuthor = review?.UserId == currentUserId;
+            bool isAuthor = review.UserId == currentUserId;
             bool isAdminOrStaff = roles.Contains("ADMIN") || roles.Contains("STAFF");
             if (!isAuthor && !isAdminOrStaff)
             {
                 throw new ForbiddenException("You are not authorized to delete this comment.");
             }
 
+            // Logic xóa đệ quy để xóa các replies con
             await RecursivelyDeleteReplies(id);
 
-            await _commentRepository.DeleteParentLinkAsync(id);
+            // Xóa comment chính
             await _commentRepository.DeleteAsync(id);
 
             return true;
@@ -196,9 +212,7 @@ namespace ReviewService.Services
             var replies = await _commentRepository.GetRepliesByParentIdAsync(parentId);
             foreach (var reply in replies)
             {
-                await RecursivelyDeleteReplies(reply.CommentId);
-
-                await _commentRepository.DeleteParentLinkAsync(reply.CommentId);
+                await RecursivelyDeleteReplies(reply.CommentId); 
                 await _commentRepository.DeleteAsync(reply.CommentId);
             }
         }

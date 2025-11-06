@@ -19,5 +19,6 @@ namespace ReviewService.Repositories.Interfaces
         Task<IEnumerable<Comment>> GetDescendantsAsync(int rootCommentId);
         Task<Comment?> FindRootCommentByReviewIdAsync(int reviewId);
         Task<Dictionary<int, int>> GetParentIdsForCommentsAsync(IEnumerable<int> commentIds);
+        Task<Comment> AddReplyAsync(Comment reply, int parentId);
     }
 }
