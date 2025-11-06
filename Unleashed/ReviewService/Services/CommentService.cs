@@ -104,8 +104,8 @@ namespace ReviewService.Services
                     var notification = new CreateNotificationForUsersRequestDto
                     {
                         NotificationTitle = "New Reply To Your Comment",
-                        NotificationContent = $"{replyingUser.Username} has replied to your comment on {product.ProductName}.",
-                        Usernames = new List<string> { reviewAuthor.Username }
+                        NotificationContent = $"{replyingUser.UserUsername} has replied to your comment on {product.ProductName}.",
+                        Usernames = new List<string> { reviewAuthor.UserUsername }
                     };
 
                     await _notificationServiceClient.CreateNotificationForUsersAsync(notification);
