@@ -12,8 +12,8 @@ using ReviewService.Data;
 namespace ReviewService.Migrations
 {
     [DbContext(typeof(ReviewDbContext))]
-    [Migration("20251102143557_AddCascadeDeleteToReviewComments")]
-    partial class AddCascadeDeleteToReviewComments
+    [Migration("20251107102751_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -50,6 +50,10 @@ namespace ReviewService.Migrations
                     b.Property<int?>("ReviewId")
                         .HasColumnType("int")
                         .HasColumnName("review_id");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
 
                     b.HasKey("CommentId")
                         .HasName("comment_pkey");

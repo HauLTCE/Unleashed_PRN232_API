@@ -13,6 +13,8 @@ public partial class Comment
     [Column("comment_id")]
     public int CommentId { get; set; }
 
+    [Column("user_id")]
+    public Guid? UserId { get; set; }
     [Column("review_id")]
     public int? ReviewId { get; set; }
 

@@ -133,11 +133,15 @@ namespace ReviewService.Repositories
 
         public async Task DeleteParentLinkAsync(int commentId)
         {
-            // Sửa lại để xóa đúng bản ghi
-            var links = _context.CommentParents.Where(cp => cp.CommentId == commentId || cp.CommentParentId == commentId);
-            if (links.Any())
+
+            var linksToDelete = await _context.CommentParents
+                .Where(cp => cp.CommentId == commentId || cp.CommentParentId == commentId)
+                .ToListAsync();
+
+            if (linksToDelete.Any())
             {
-                _context.CommentParents.RemoveRange(links);
+                _context.CommentParents.RemoveRange(linksToDelete);
+
                 await _context.SaveChangesAsync();
             }
         }
