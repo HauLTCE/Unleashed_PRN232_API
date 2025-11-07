@@ -19,9 +19,10 @@ namespace OrderService.Services
         private readonly IOrderVariationRepo _orderVariationSingleRepository;
         private readonly IProductApiClient _productApiClient;
         private readonly IInventoryApiClient _inventoryApiClient;
+        private readonly IDiscountApiClient _discountApiClient;
         private readonly IMapper _mapper;
         private readonly ILogger<OrderServices> _logger;
-        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationRepo orderVariationSingleRepository, IProductApiClient productApiClient,IInventoryApiClient inventoryApiClient, IMapper mapper, ILogger<OrderServices> logger)
+        public OrderServices(IOrderRepository orderRepository, IOrderStatusRepo orderStatusRepository, IOrderVariationRepo orderVariationSingleRepository, IProductApiClient productApiClient,IInventoryApiClient inventoryApiClient, IMapper mapper, ILogger<OrderServices> logger, IDiscountApiClient discountApiClient)
         {
             _orderRepository = orderRepository;
             _orderStatusRepository = orderStatusRepository;
@@ -30,6 +31,7 @@ namespace OrderService.Services
             _inventoryApiClient = inventoryApiClient;
             _mapper = mapper;
             _logger = logger;
+            _discountApiClient = discountApiClient;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto createOrderDto)
@@ -60,7 +62,7 @@ namespace OrderService.Services
             var requestedQty = createOrderDto.OrderVariations.ToDictionary(v => v.VariationId, v => v.Quantity);
             var stockLevels = await _inventoryApiClient.GetStockByIdsAsync(variationIds);
             if (!stockLevels.Any() || stockLevels.Contains(null)) throw new Exception($"Not found enough stock");
-            double totalAmount = 0;
+            double subTotal = 0; // Đổi tên từ totalAmount thành subTotal để rõ ràng hơn
 
             foreach (var stockItem in stockLevels)
             {
@@ -74,26 +76,61 @@ namespace OrderService.Services
                 if (!variationLookup.TryGetValue(stockItem.VariationId, out var variation))
                     throw new KeyNotFoundException($"Price not found for variation {stockItem.VariationId}");
 
-                totalAmount += qty!.Value * variation.VariationPrice;
+                subTotal += qty!.Value * variation.VariationPrice;
             }
 
             var order = _mapper.Map<Order>(createOrderDto) ?? throw new Exception("Mapping failed");
 
+            decimal discountAmount = 0m;
+            if (createOrderDto.DiscountId.HasValue)
+            {
+                var discount = await _discountApiClient.Get(createOrderDto.DiscountId.Value);
+
+                if (discount != null)
+                {
+                    // 1. Kiểm tra discount có hợp lệ không
+                    if (discount.DiscountStatusId != 2) // 2: ACTIVE
+                    {
+                        throw new InvalidOperationException($"Discount code '{discount.DiscountCode}' is not active.");
+                    }
+                    if (discount.DiscountMinimumOrderValue.HasValue && Convert.ToDecimal(subTotal) < discount.DiscountMinimumOrderValue.Value)
+                    {
+                        throw new InvalidOperationException($"Order total does not meet the minimum requirement of {discount.DiscountMinimumOrderValue.Value} for this discount.");
+                    }
+
+                    // 2. Tính toán số tiền được giảm
+                    if (discount.DiscountTypeId == 1 && discount.DiscountValue.HasValue) // 1: PERCENTAGE
+                    {
+                        discountAmount = Convert.ToDecimal(subTotal) * (discount.DiscountValue.Value / 100m);
+                        if (discount.DiscountMaximumValue.HasValue && discountAmount > discount.DiscountMaximumValue.Value)
+                        {
+                            discountAmount = discount.DiscountMaximumValue.Value;
+                        }
+                    }
+                    else if (discount.DiscountTypeId == 2 && discount.DiscountValue.HasValue) // 2: FLAT_AMOUNT
+                    {
+                        discountAmount = discount.DiscountValue.Value;
+                    }
+                }
+                else
+                {
+                    throw new KeyNotFoundException($"Discount with ID {createOrderDto.DiscountId.Value} not found.");
+                }
+            }
 
             order.OrderId = Guid.NewGuid();
             order.OrderDate = DateTimeOffset.UtcNow;
             order.OrderTrackingNumber = GenerateTrackingNumber() ?? throw new Exception("Tracking number failed");
             order.OrderTransactionReference = Guid.NewGuid().ToString("N")[..16];
             order.OrderStatusId = 1;
-            order.OrderTax = 0.05m; 
-            order.OrderTotalAmount = Convert.ToDecimal(Math.Round(totalAmount * 1.05, 2));
+            order.OrderTax = 0.05m;
+            decimal subTotalAfterDiscount = Convert.ToDecimal(subTotal) - discountAmount;
+            order.OrderTotalAmount = subTotalAfterDiscount + (subTotalAfterDiscount * order.OrderTax.Value);
+            order.OrderTotalAmount = Math.Round(order.OrderTotalAmount.Value, 2);
 
             if (order.OrderVariations.Count <= 0) throw new Exception("No variations");
 
-            if (createOrderDto.DiscountId != null)
-            {
-                // await _discountService.ApplyDiscountAsync(order, createOrderDto.DiscountCode);
-            }
+            
             await _orderRepository.CreateAsync(order);   
 
             await _orderRepository.SaveAsync();
@@ -123,6 +160,32 @@ namespace OrderService.Services
             // Chỉ cho phép hủy đơn hàng ở trạng thái 'PENDING' hoặc 'PROCESSING'
             if (order.OrderStatusId == 1 || order.OrderStatusId == 2)
             {
+
+                if (order.OrderStatusId == 2)
+                {
+                    // Nếu đơn hàng đã được xử lý (đã trừ kho), thì cần hoàn trả hàng vào kho
+                    try
+                    {
+                        var returnSuccess = await _inventoryApiClient.ReturnStocksAsync(order.OrderVariations.ToList());
+
+                        // Nếu việc hoàn kho thất bại, đây là một lỗi nghiêm trọng
+                        if (!returnSuccess)
+                        {
+                            _logger.LogError("CRITICAL: Không thể hoàn trả hàng cho đơn hàng bị hủy {OrderId}. " +
+                                             "Hủy bỏ thao tác. Cần can thiệp thủ công.", orderId);
+                            // Ném ra một Exception để ngăn việc cập nhật trạng thái đơn hàng khi kho chưa được đồng bộ
+                            throw new Exception($"Không thể hoàn trả hàng cho đơn hàng {orderId}. Việc hủy đơn đã bị dừng lại.");
+                        }
+
+                        _logger.LogInformation("Hàng hóa cho đơn hàng bị hủy {OrderId} đã được hoàn trả thành công vào kho.", orderId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Lỗi nghiêm trọng khi gọi API hoàn trả hàng cho đơn hàng {OrderId}.", orderId);
+                        throw; // Ném lại lỗi để dừng tiến trình
+                    }
+                }
+
                 order.OrderStatusId = 5; // Giả định ID 5 là "CANCELLED"
                 _orderRepository.Update(order);
 
@@ -154,6 +217,10 @@ namespace OrderService.Services
                 try
                 {
                     await _inventoryApiClient.DecreaseStocksAsync([.. order.OrderVariations]);
+                    if (order.DiscountId.HasValue)
+                    {
+                        await _discountApiClient.UseDiscount(order.DiscountId.Value);
+                    }
                 }
                 catch (Exception)
                 {
@@ -164,6 +231,26 @@ namespace OrderService.Services
             order.OrderStatusId = orderStatus;
             _orderRepository.Update(order);
             await _orderRepository.SaveAsync();
+        }
+
+        public async Task UpdateOrderStatusByStaffAsync(Guid orderId, Guid staffId, int newStatusId)
+        {
+            var order = await _orderRepository.FindAsync(orderId);
+            if (order == null) throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
+
+            // Chỉ cho phép nhân viên chuyển từ Processing (2) -> Shipping (3)
+            if (order.OrderStatusId == 2 && newStatusId == 3)
+            {
+                order.OrderStatusId = newStatusId;
+                order.InchargeEmployeeId = staffId; // Cập nhật nhân viên phụ trách
+                                                    // Optional: Có thể thêm logic gán tracking number ở đây nếu cần
+                _orderRepository.Update(order);
+                await _orderRepository.SaveAsync();
+            }
+            else
+            {
+                throw new InvalidOperationException($"Không thể chuyển trạng thái từ '{order.OrderStatusId}' sang '{newStatusId}'.");
+            }
         }
 
         public async Task ConfirmOrderReceivedAsync(Guid orderId)

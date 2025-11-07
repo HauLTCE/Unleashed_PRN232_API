@@ -81,5 +81,35 @@ namespace OrderService.Clients
                 throw;
             }
         }
+        public async Task<bool> ReturnStocksAsync(List<OrderVariation> list)
+        {
+            try
+            {
+                // Gọi đến endpoint [HttpPost("return-stock")] trong TransactionsController
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/transactions/return-stock",
+                    list);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                // Ghi log lỗi nếu không thành công
+                var errorBody = await response.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "Inventory API return-stock failed. Status: {StatusCode}. Response: {Body}",
+                    response.StatusCode,
+                    errorBody);
+
+                return false;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP request error while returning stocks.");
+                // Ném lại lỗi để lớp service có thể xử lý
+                throw;
+            }
+        }
     }
 }

@@ -33,5 +33,7 @@ namespace DiscountService.Services.Interfaces
         // Lấy danh sách phụ
         Task<IEnumerable<DiscountStatus>> GetAllStatusesAsync();
         Task<IEnumerable<DiscountType>> GetAllTypesAsync();
+
+        Task UseDiscountAsync(int discountId);
     }
 }

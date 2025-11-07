@@ -1,16 +1,18 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using OrderService.Clients;
+using OrderService.Clients.IClients;
 using OrderService.Data;
 using OrderService.Profiles;
 using OrderService.Repositories;
 using OrderService.Repositories.Interfaces;
 using OrderService.Services;
 using OrderService.Services.Interfaces;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using ProductService.Clients.IClients;
-using OrderService.Clients;
-using OrderService.Clients.IClients;
+using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,7 +72,7 @@ builder.Services.AddHttpClient<IInventoryApiClient, InventoryApiClient>(client =
     client.BaseAddress = new Uri("http://inventoryservice");
 }).AddServiceDiscovery();
 
-builder.Services.AddHttpClient("discountservice", client =>
+builder.Services.AddHttpClient<IDiscountApiClient, DiscountApiClient>(client =>
 {
     client.BaseAddress = new Uri("http://discountservice");
 }).AddServiceDiscovery();
@@ -96,10 +98,41 @@ builder.Services.AddScoped<IShippingRepo, ShippingRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderServices>();
 builder.Services.AddScoped<IOrderVariationRepo, OrderVariationRepo>();
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+    options.JsonSerializerOptions.WriteIndented = true;
+});
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Order API", Version = "v1" });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddMaps(typeof(OrderProfile).Assembly);
@@ -114,11 +147,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
+app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
-
-app.UseCors("AllowAll");
 
 app.MapControllers();
 
