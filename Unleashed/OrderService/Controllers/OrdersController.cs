@@ -151,6 +151,50 @@ namespace OrderService.Controllers
             }
         }
 
+        [HttpPut("{orderId}/confirm-receipt")]
+        public async Task<IActionResult> ConfirmOrderReceived(Guid orderId)
+        {
+            // Kiểm tra quyền sở hữu
+            var order = await _orderService.GetOrderByIdAsync(orderId);
+            if (order == null) return NotFound();
+
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (order.UserId.ToString() != userIdString) return Forbid();
+
+            try
+            {
+                await _orderService.ConfirmOrderReceivedAsync(orderId);
+                return Ok(new { Message = "Xác nhận đã nhận hàng thành công." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+
+        [HttpPut("{orderId}/ship")]
+        public async Task<IActionResult> ShipOrder(Guid orderId)
+        {
+            var staffIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var staffId = Guid.Parse(staffIdString!);
+
+            try
+            {
+                // Phương thức này xử lý việc chuyển từ Processing -> Shipping
+                await _orderService.UpdateOrderStatusByStaffAsync(orderId, staffId, 3); // 3 là Shipping
+                return Ok(new { Message = "Đơn hàng đã được chuyển sang trạng thái đang giao." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
         [HttpGet("user/{userId}/eligible-for-review")]
         public async Task<IActionResult> GetEligibleOrdersForReview(Guid userId, [FromQuery] Guid productId)
         {

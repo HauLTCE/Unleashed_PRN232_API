@@ -457,5 +457,27 @@ namespace DiscountService.Services
             return await _typeRepo.All().ToListAsync();
         }
         #endregion
+
+        public async Task UseDiscountAsync(int discountId)
+        {
+            var discount = await _discountRepo.FindAsync(discountId);
+            if (discount == null)
+            {
+                // Có thể throw lỗi hoặc bỏ qua nếu không tìm thấy
+                return;
+            }
+
+            // Tăng số lượt sử dụng
+            discount.DiscountUsageCount = (discount.DiscountUsageCount ?? 0) + 1;
+
+            // Kiểm tra nếu đạt giới hạn thì chuyển sang Inactive
+            if (discount.DiscountUsageLimit.HasValue && discount.DiscountUsageCount >= discount.DiscountUsageLimit.Value)
+            {
+                discount.DiscountStatusId = 1; // 1: INACTIVE
+            }
+
+            _discountRepo.Update(discount);
+            await _discountRepo.SaveAsync();
+        }
     }
 }

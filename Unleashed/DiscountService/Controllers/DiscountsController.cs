@@ -217,5 +217,12 @@ namespace DiscountService.Controllers
             // Lấy User ID từ claim trong JWT token
             return User.FindFirstValue(ClaimTypes.NameIdentifier);
         }
+
+        [HttpPut("{id:int}/use")]
+        public async Task<IActionResult> UseDiscount(int id)
+        {
+            await _discountService.UseDiscountAsync(id);
+            return NoContent(); // 204 No Content - Thành công
+        }
     }
 }

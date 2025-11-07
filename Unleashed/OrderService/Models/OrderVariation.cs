@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace OrderService.Models;
@@ -28,6 +29,8 @@ public partial class OrderVariation
     [Column("variation_price_at_purchase", TypeName = "decimal(22, 2)")]
     public decimal VariationPriceAtPurchase { get; set; }
 
+
+    [JsonIgnore]
     [ForeignKey("OrderId")]
     [InverseProperty("OrderVariations")]
     public virtual Order Order { get; set; } = null!;

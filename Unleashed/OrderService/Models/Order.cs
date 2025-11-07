@@ -69,6 +69,7 @@ public partial class Order
     [InverseProperty("Orders")]
     public virtual OrderStatus? OrderStatus { get; set; }
 
+    
     [InverseProperty("Order")]
     public virtual ICollection<OrderVariation> OrderVariations { get; set; } = [];
 

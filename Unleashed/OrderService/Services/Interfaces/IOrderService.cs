@@ -16,6 +16,7 @@ namespace OrderService.Services.Interfaces
         Task CheckStockAvailabilityAsync(CreateOrderDto createOrderDto);
         Task CancelOrderAsync(Guid orderId);
         Task ReviewOrderByStaffAsync(Guid orderId, Guid staffId, int orderStatus);
+        Task UpdateOrderStatusByStaffAsync(Guid orderId, Guid staffId, int newStatusId);
         Task ConfirmOrderReceivedAsync(Guid orderId);
         Task ReturnOrderAsync(Guid orderId);
         Task InspectReturnedOrderAsync(Guid orderId);
