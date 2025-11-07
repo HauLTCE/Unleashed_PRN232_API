@@ -45,20 +45,16 @@ namespace ReviewService.Services
 
         public async Task<ReviewDto> CreateReviewAsync(CreateReviewDto reviewDto, Guid currentUserId)
         {
-            // Kiểm tra ProductId từ DTO
             if (reviewDto.ProductId == null)
                 throw new BadRequestException("Product ID cannot be null.");
 
-            // KHÔNG CẦN KIỂM TRA reviewDto.UserId nữa.
-
-            // Logic kiểm tra quyền và sự tồn tại của review vẫn giữ nguyên,
-            // nhưng giờ nó sử dụng currentUserId từ tham số thay vì reviewDto.UserId.
             if (await _reviewRepository.ExistsByProductAndOrderAndUserAsync(reviewDto.ProductId.Value, reviewDto.OrderId, currentUserId))
             {
                 throw new BadRequestException("You have already reviewed this product for this specific order.");
             }
 
             var reviewEntity = _mapper.Map<Review>(reviewDto);
+            reviewEntity.UserId = currentUserId;
             var newReview = await _reviewRepository.AddAsync(reviewEntity);
 
             Comment? rootComment = null;
@@ -69,8 +65,10 @@ namespace ReviewService.Services
                     ReviewId = newReview.ReviewId,
                     CommentContent = reviewDto.ReviewComment,
                     CommentCreatedAt = DateTimeOffset.UtcNow,
-                    CommentUpdatedAt = DateTimeOffset.UtcNow
+                    CommentUpdatedAt = DateTimeOffset.UtcNow,
+                    UserId = currentUserId
                 };
+                await _commentRepository.AddAsync(comment);
             }
 
             return _mapper.Map<ReviewDto>(newReview);
@@ -79,35 +77,67 @@ namespace ReviewService.Services
         public async Task<PagedResult<ProductReviewDto>> GetAllReviewsByProductIdAsync(Guid productId, int page, int size, Guid? currentUserId)
         {
             var pagedReviews = await _reviewRepository.GetTopLevelReviewsByProductIdAsync(productId, page, size);
-
             if (!pagedReviews.Items.Any())
             {
                 return new PagedResult<ProductReviewDto>(new List<ProductReviewDto>(), 0);
             }
 
-            var userIds = pagedReviews.Items.Select(r => r.UserId).Where(id => id.HasValue).Select(id => id.Value).Distinct();
+            // --- Logic mới để lấy thông tin của TẤT CẢ user ---
 
-            var employeesMap = new Dictionary<Guid, UserDto>();
-            try
-            {
-                var employeeDetails = await _authServiceClient.GetUsersByIdsAsync(userIds);
-                if (employeeDetails != null)
-                {
-                    employeesMap = employeeDetails.ToDictionary(e => e.UserId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to fetch user details from AuthService for reviews. Partial data will be shown.");
-            }
-
-            var dtos = new List<ProductReviewDto>();
+            // 1. Lấy tất cả review, comment gốc và comment con
+            var reviewDetails = new List<(Review review, Comment? rootComment, List<Comment> descendants)>();
             foreach (var review in pagedReviews.Items)
             {
                 var rootComment = await _commentRepository.FindRootCommentByReviewIdAsync(review.ReviewId);
-                employeesMap.TryGetValue(review.UserId ?? Guid.Empty, out var user);
+                var descendants = rootComment != null
+                    ? (await _commentRepository.GetDescendantsAsync(rootComment.CommentId)).ToList()
+                    : new List<Comment>();
+                reviewDetails.Add((review, rootComment, descendants));
+            }
 
-                dtos.Add(new ProductReviewDto
+            // 2. Gom tất cả UserId cần lấy thông tin vào một danh sách duy nhất
+            var userIdsToFetch = new HashSet<Guid>();
+            foreach (var detail in reviewDetails)
+            {
+                // Thêm UserId của người review gốc
+                if (detail.review.UserId.HasValue) userIdsToFetch.Add(detail.review.UserId.Value);
+                // Thêm UserId của người viết comment gốc (nếu có)
+                if (detail.rootComment?.UserId.HasValue == true)
+                {
+                    userIdsToFetch.Add(detail.rootComment.UserId.Value);
+                }
+                // Thêm UserId của TẤT CẢ người reply
+                foreach (var descendant in detail.descendants)
+                {
+                    if (descendant.UserId.HasValue) userIdsToFetch.Add(descendant.UserId.Value);
+                }
+            }
+
+            // 3. Gọi API lấy thông tin user chỉ một lần
+            var usersMap = new Dictionary<Guid, UserDto>();
+            if (userIdsToFetch.Any())
+            {
+                try
+                {
+                    var userDetails = await _authServiceClient.GetUsersByIdsAsync(userIdsToFetch);
+                    if (userDetails != null) usersMap = userDetails.ToDictionary(e => e.UserId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to fetch user details from AuthService.");
+                }
+            }
+
+            // 4. Xây dựng cây DTO với thông tin user chính xác
+            var dtos = new List<ProductReviewDto>();
+            foreach (var detail in reviewDetails)
+            {
+                var review = detail.review;
+                var rootComment = detail.rootComment;
+                // Lấy thông tin user của review gốc
+                usersMap.TryGetValue(review.UserId ?? Guid.Empty, out var reviewerInfo);
+
+                var reviewDto = new ProductReviewDto
                 {
                     UserId = review.UserId,
                     ReviewId = review.ReviewId,
@@ -116,29 +146,74 @@ namespace ReviewService.Services
                     CommentId = rootComment?.CommentId ?? 0,
                     CreatedAt = rootComment?.CommentCreatedAt ?? DateTimeOffset.MinValue,
                     UpdatedAt = rootComment?.CommentUpdatedAt ?? DateTimeOffset.MinValue,
-                    FullName = user?.UserUsername,
-                    UserImage = user?.UserImage
-                });
+                    FullName = reviewerInfo?.UserUsername, // Tên người review gốc
+                    UserImage = reviewerInfo?.UserImage,
+                    ChildComments = new List<ProductReviewDto>()
+                };
+
+                if (rootComment != null && detail.descendants.Any())
+                {
+                    // Truyền usersMap vào để lấy thông tin của người reply
+                    reviewDto.ChildComments = await BuildCommentTree(detail.descendants, rootComment.CommentId, usersMap);
+                }
+                dtos.Add(reviewDto);
             }
 
+            // Logic sắp xếp review của user hiện tại lên đầu (giữ nguyên)
             if (currentUserId.HasValue && page == 0 && dtos.Any())
             {
-                var currentUserDto = employeesMap.GetValueOrDefault(currentUserId.Value);
-                if (currentUserDto != null)
+                var currentUserReviewIndex = dtos.FindIndex(d => d.UserId == currentUserId.Value);
+                if (currentUserReviewIndex > 0)
                 {
-                    var currentUserReviewIndex = dtos.FindIndex(d => d.FullName == currentUserDto.UserUsername);
-                    if (currentUserReviewIndex > 0)
-                    {
-                        var myReview = dtos[currentUserReviewIndex];
-                        dtos.RemoveAt(currentUserReviewIndex);
-                        dtos.Insert(0, myReview);
-                    }
+                    var myReview = dtos[currentUserReviewIndex];
+                    dtos.RemoveAt(currentUserReviewIndex);
+                    dtos.Insert(0, myReview);
                 }
             }
 
             return new PagedResult<ProductReviewDto>(dtos, pagedReviews.TotalCount);
         }
+        private async Task<List<ProductReviewDto>> BuildCommentTree(List<Comment> flatComments, int rootParentId, Dictionary<Guid, UserDto> usersMap)
+        {
+            var commentDtos = new Dictionary<int, ProductReviewDto>();
+            var parentLinks = await _commentRepository.GetParentIdsForCommentsAsync(flatComments.Select(c => c.CommentId));
 
+            foreach (var comment in flatComments)
+            {
+                // Lấy thông tin user của comment/reply này
+                usersMap.TryGetValue(comment.UserId ?? Guid.Empty, out var replierInfo);
+
+                commentDtos[comment.CommentId] = new ProductReviewDto
+                {
+                    ReviewId = comment.ReviewId ?? 0,
+                    CommentId = comment.CommentId,
+                    ReviewComment = comment.CommentContent,
+                    CreatedAt = comment.CommentCreatedAt ?? DateTimeOffset.MinValue,
+                    UpdatedAt = comment.CommentUpdatedAt ?? DateTimeOffset.MinValue,
+                    // Sử dụng thông tin của người reply
+                    FullName = replierInfo?.UserUsername ?? "Người dùng ẩn",
+                    UserImage = replierInfo?.UserImage,
+                    UserId = comment.UserId,
+                    ChildComments = new List<ProductReviewDto>()
+                };
+            }
+
+            var tree = new List<ProductReviewDto>();
+            foreach (var dto in commentDtos.Values)
+            {
+                parentLinks.TryGetValue(dto.CommentId, out var parentId);
+
+                if (parentId == rootParentId)
+                {
+                    tree.Add(dto);
+                }
+                else if (commentDtos.TryGetValue(parentId, out var parentDto))
+                {
+                    parentDto.ChildComments.Add(dto);
+                }
+            }
+            return tree;
+        }
         public async Task<ReviewEligibilityResponseDto> GetReviewEligibilityAsync(Guid productId, Guid userId)
         {
             List<OrderDto>? eligibleOrders;
@@ -186,19 +261,35 @@ namespace ReviewService.Services
             // Cập nhật rating
             reviewToUpdate.ReviewRating = reviewDto.ReviewRating;
             await _reviewRepository.UpdateAsync(reviewToUpdate);
-
+            var rootComment = await _commentRepository.FindRootCommentByReviewIdAsync(id);
             // Cập nhật comment gốc liên quan
             if (!string.IsNullOrEmpty(reviewDto.ReviewComment))
             {
-                var rootComment = await _commentRepository.FindRootCommentByReviewIdAsync(id);
                 if (rootComment != null)
                 {
                     rootComment.CommentContent = reviewDto.ReviewComment;
                     rootComment.CommentUpdatedAt = DateTimeOffset.UtcNow;
                     await _commentRepository.UpdateAsync(rootComment);
                 }
+                else
+                {
+                    var newComment = new Comment
+                    {
+                        ReviewId = id,
+                        CommentContent = reviewDto.ReviewComment,
+                        CommentCreatedAt = DateTimeOffset.UtcNow,
+                        CommentUpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    await _commentRepository.AddAsync(newComment);
+                }
             }
-
+            else if (rootComment != null)
+            {   
+                // You might want to delete the comment, but clearing content is safer to preserve replies.
+                rootComment.CommentContent = string.Empty;
+                rootComment.CommentUpdatedAt = DateTimeOffset.UtcNow;
+                await _commentRepository.UpdateAsync(rootComment);
+            }
             return true;
         }
 

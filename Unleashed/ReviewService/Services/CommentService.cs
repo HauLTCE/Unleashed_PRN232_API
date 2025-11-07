@@ -62,30 +62,23 @@ namespace ReviewService.Services
             if (review == null || !review.ProductId.HasValue)
                 throw new NotFoundException("Associated review or product not found.");
 
-            // LOGIC MỚI: KIỂM TRA QUYỀN REPLY
-            bool hasReviewed = await _reviewRepository.HasUserReviewedProductAsync(review.ProductId.Value, replyingUserId);
-            if (!hasReviewed)
-            {
-                throw new ForbiddenException("You must have reviewed this product to be able to reply.");
-            }
-
             var currentTime = DateTimeOffset.UtcNow; // Sử dụng UtcNow cho nhất quán
             var newCommentEntity = new Comment
             {
                 ReviewId = parentComment.ReviewId,
                 CommentContent = commentDto.CommentContent,
                 CommentCreatedAt = currentTime,
-                CommentUpdatedAt = currentTime
+                CommentUpdatedAt = currentTime,
+                UserId = replyingUserId
             };
 
             // SỬ DỤNG PHƯƠNG THỨC REPO MỚI
             var savedComment = await _commentRepository.AddReplyAsync(newCommentEntity, parentComment.CommentId);
-
+            await SendReplyNotificationAsync(review, replyingUserId);
             // Map kết quả
             var resultDto = _mapper.Map<CommentDto>(savedComment);
             resultDto.ParentCommentId = parentComment.CommentId; // Gán ParentId
-            resultDto.userId = review.UserId; // Gán UserId từ review gốc
-
+            resultDto.userId = replyingUserId;
             return resultDto;
         }
 
@@ -128,18 +121,19 @@ namespace ReviewService.Services
         public async Task<bool> UpdateCommentAsync(int id, UpdateCommentDto commentDto, Guid currentUserId)
         {
             var commentToUpdate = await _commentRepository.GetByIdAsync(id);
-            if (commentToUpdate == null) return false;
-
-            var review = await _reviewRepository.GetByIdAsync(commentToUpdate.ReviewId.GetValueOrDefault());
-            // Chỉ chủ nhân review gốc mới được sửa
-            if (review == null || review.UserId != currentUserId)
+            if (commentToUpdate == null)
+            {
+ 
+                return false;
+            }
+            if (commentToUpdate.UserId != currentUserId)
             {
                 throw new ForbiddenException("You are not authorized to update this comment.");
             }
-
             _mapper.Map(commentDto, commentToUpdate);
             commentToUpdate.CommentUpdatedAt = DateTimeOffset.UtcNow;
             await _commentRepository.UpdateAsync(commentToUpdate);
+
             return true;
         }
 
@@ -186,33 +180,42 @@ namespace ReviewService.Services
         public async Task<bool> DeleteCommentAsync(int id, Guid currentUserId, IEnumerable<string> roles)
         {
             var commentToDelete = await _commentRepository.GetByIdAsync(id);
-            if (commentToDelete == null) return false;
+            if (commentToDelete == null)
+            {
+                return false;
+            }
 
-            var review = await _reviewRepository.GetByIdAsync(commentToDelete.ReviewId.GetValueOrDefault());
-            if (review == null) return false;
+            bool isAuthor = commentToDelete.UserId == currentUserId;
 
-            bool isAuthor = review.UserId == currentUserId;
+
             bool isAdminOrStaff = roles.Contains("ADMIN") || roles.Contains("STAFF");
+
+
             if (!isAuthor && !isAdminOrStaff)
             {
                 throw new ForbiddenException("You are not authorized to delete this comment.");
             }
 
-            // Logic xóa đệ quy để xóa các replies con
+
             await RecursivelyDeleteReplies(id);
 
-            // Xóa comment chính
+
+            await _commentRepository.DeleteParentLinkAsync(id);
             await _commentRepository.DeleteAsync(id);
 
             return true;
         }
+
 
         private async Task RecursivelyDeleteReplies(int parentId)
         {
             var replies = await _commentRepository.GetRepliesByParentIdAsync(parentId);
             foreach (var reply in replies)
             {
-                await RecursivelyDeleteReplies(reply.CommentId); 
+
+                await RecursivelyDeleteReplies(reply.CommentId);
+
+                await _commentRepository.DeleteParentLinkAsync(reply.CommentId);
                 await _commentRepository.DeleteAsync(reply.CommentId);
             }
         }

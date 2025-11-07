@@ -33,6 +33,7 @@ namespace ReviewService.Migrations
                 {
                     comment_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     review_id = table.Column<int>(type: "int", nullable: true),
                     comment_content = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     comment_created_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
@@ -45,7 +46,8 @@ namespace ReviewService.Migrations
                         name: "comment_review_id_fkey",
                         column: x => x.review_id,
                         principalTable: "review",
-                        principalColumn: "review_id");
+                        principalColumn: "review_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(

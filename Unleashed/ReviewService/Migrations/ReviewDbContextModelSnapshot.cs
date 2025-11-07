@@ -48,6 +48,10 @@ namespace ReviewService.Migrations
                         .HasColumnType("int")
                         .HasColumnName("review_id");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("user_id");
+
                     b.HasKey("CommentId")
                         .HasName("comment_pkey");
 
