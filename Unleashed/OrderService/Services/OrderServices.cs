@@ -302,10 +302,10 @@ namespace OrderService.Services
         public async Task<PagedResult<OrderDto>> GetOrdersByCustomerIdAsync(Guid userId, int page, int size)
         {
              (var result, var total) = await _orderRepository.GetOrdersByUserIdAsync(userId, page, size);
-
+            var orderDTOs = _mapper.Map<List<OrderDto>>(result);
             return new PagedResult<OrderDto>()
             {
-                Items = [.. _mapper.Map<IEnumerable<OrderDto>>(result)],
+                Items = orderDTOs,
                 TotalItems = total
             };
         }

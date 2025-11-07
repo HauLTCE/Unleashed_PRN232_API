@@ -57,7 +57,7 @@ namespace OrderService.Controllers
             {
                 return Unauthorized();
             }
-
+                
             var pagedResult = await _orderService.GetOrdersByCustomerIdAsync(userId, pageNumber, pageSize);
 
             return Ok(pagedResult);
@@ -189,7 +189,7 @@ namespace OrderService.Controllers
             {
                 return NotFound(new { Message = ex.Message });
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex)    
             {
                 return BadRequest(new { Message = ex.Message });
             }
