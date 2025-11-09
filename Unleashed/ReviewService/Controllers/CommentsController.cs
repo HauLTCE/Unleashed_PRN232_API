@@ -40,7 +40,7 @@ namespace ReviewService.Controllers
 
         // DELETE: api/comments/5
         [HttpDelete("{id}")]
-        [Authorize(Roles = "CUSTOMER")]
+        [Authorize]
         public async Task<IActionResult> DeleteComment(int id)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -90,7 +90,7 @@ namespace ReviewService.Controllers
 
         // PUT: api/Comments/5
         [HttpPut("{id}")]
-        [Authorize(Roles = "CUSTOMER")]
+        [Authorize]
         public async Task<IActionResult> PutComment(int id, UpdateCommentDto commentDto)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
