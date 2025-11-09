@@ -19,7 +19,7 @@ namespace ReviewService.Controllers
 
         // POST: api/comments
         [HttpPost]
-        [Authorize(Roles = "CUSTOMER")]
+        [Authorize]
         public async Task<ActionResult<CommentDto>> PostReply(CreateCommentDto commentDto)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
